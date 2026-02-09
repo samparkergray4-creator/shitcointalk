@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bitcointalk Launchpad - Home</title>
+  <link rel="stylesheet" href="/css/bitcointalk.css">
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="header-inner">
+      <h1>Bitcointalk Launchpad</h1>
+      <div class="header-links">
+        <a href="/">Home</a>
+        <a href="#launch">Launch</a>
+        <a href="#coins">Coins</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Breadcrumb -->
+  <div class="nav-breadcrumb">
+    <div class="nav-breadcrumb-inner">
+      <a href="/">Bitcointalk Launchpad</a> &gt; Home
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="container">
+
+    <!-- Launch Section -->
+    <div class="launch-section" id="launch">
+      <h2>Launch Your Memecoin</h2>
+
+      <div id="statusMsg"></div>
+
+      <form class="launch-form" id="launchForm">
+        <div class="form-group">
+          <label for="name">Token Name *</label>
+          <input type="text" id="name" name="name" required placeholder="e.g. My Awesome Coin">
+        </div>
+
+        <div class="form-group">
+          <label for="symbol">Symbol *</label>
+          <input type="text" id="symbol" name="symbol" required placeholder="e.g. MAC" maxlength="10">
+        </div>
+
+        <div class="form-group">
+          <label for="description">Description</label>
+          <textarea id="description" name="description" placeholder="Tell the community about your coin..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="image">Token Image * (PNG, JPG, GIF)</label>
+          <input type="file" id="image" name="image" accept="image/*" required>
+        </div>
+
+        <button type="submit" class="btn" id="launchBtn">
+          Launch Token (0.07 SOL)
+        </button>
+      </form>
+    </div>
+
+    <!-- Recent Coins -->
+    <div class="board-section" id="coins">
+      <table class="board-table">
+        <thead>
+          <tr>
+            <th>Coin</th>
+            <th>Market Cap</th>
+            <th>24h Volume</th>
+            <th>Holders</th>
+            <th>Replies</th>
+          </tr>
+        </thead>
+        <tbody id="coinsList">
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 20px;">
+              Loading coins...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    Bitcointalk Launchpad | Powered by Solana & pump.fun
+  </div>
+
+  <script src="/js/wallet.js"></script>
+  <script src="/js/launch.js"></script>
+</body>
+</html>

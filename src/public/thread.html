@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thread - Bitcointalk Launchpad</title>
+  <link rel="stylesheet" href="/css/bitcointalk.css">
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="header-inner">
+      <h1>Bitcointalk Launchpad</h1>
+      <div class="header-links">
+        <a href="/">Home</a>
+        <a href="/#launch">Launch</a>
+        <a href="/#coins">Coins</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Breadcrumb -->
+  <div class="nav-breadcrumb">
+    <div class="nav-breadcrumb-inner">
+      <a href="/">Bitcointalk Launchpad</a> &gt; <span id="breadcrumbTitle">Loading...</span>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="container">
+
+    <!-- Thread -->
+    <div class="thread-container">
+      <div class="thread-header">
+        <h2 id="threadTitle">Loading...</h2>
+      </div>
+
+      <!-- First Post (Coin Stats) -->
+      <div class="post" id="firstPost">
+        <div class="post-author">
+          <div class="post-author-name">Creator</div>
+          <div class="post-author-avatar">
+            <img id="coinImage" src="" alt="Coin">
+          </div>
+          <div class="post-author-info">
+            Launch Post
+          </div>
+        </div>
+        <div class="post-content">
+          <div class="post-meta">
+            <span id="coinMeta">Loading...</span>
+          </div>
+          <div class="post-body">
+            <h3><span id="coinName"></span> (<span id="coinSymbol"></span>)</h3>
+            <p id="coinDescription"></p>
+
+            <!-- Live Stats -->
+            <div class="coin-stats" id="coinStats">
+              <div class="coin-stat">
+                <span class="coin-stat-label">Market Cap</span>
+                <span class="coin-stat-value" id="statMC">-</span>
+              </div>
+              <div class="coin-stat">
+                <span class="coin-stat-label">24h Volume</span>
+                <span class="coin-stat-value" id="statVolume">-</span>
+              </div>
+              <div class="coin-stat">
+                <span class="coin-stat-label">Holders</span>
+                <span class="coin-stat-value" id="statHolders">-</span>
+              </div>
+              <div class="coin-stat">
+                <span class="coin-stat-label">Comments</span>
+                <span class="coin-stat-value" id="statComments">0</span>
+              </div>
+            </div>
+
+            <div style="margin-top: 15px; font-size: 9pt;">
+              <strong>Contract:</strong> <code id="coinMint"></code>
+              <br>
+              <a id="pumpLink" href="#" target="_blank">View on pump.fun</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comments -->
+      <div id="commentsList">
+        <!-- Comments will be loaded here -->
+      </div>
+    </div>
+
+    <!-- Reply Section -->
+    <div class="reply-section">
+      <h3>Post a Reply</h3>
+      <div id="replyStatus"></div>
+      <form class="launch-form" id="replyForm">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" placeholder="Enter username..." required>
+        </div>
+        <div class="form-group">
+          <label for="comment">Comment</label>
+          <textarea id="comment" name="comment" required placeholder="Share your thoughts..."></textarea>
+        </div>
+        <button type="submit" class="btn">Post Reply</button>
+      </form>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    Bitcointalk Launchpad | Powered by Solana & pump.fun
+  </div>
+
+  <script src="/js/thread.js"></script>
+</body>
+</html>

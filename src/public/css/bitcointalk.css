@@ -1,0 +1,366 @@
+/* Bitcointalk.org Classic Theme */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  font-size: 10pt;
+  background: #e4e9f7;
+  color: #000;
+}
+
+a {
+  color: #476c8e;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #d00;
+  text-decoration: underline;
+}
+
+/* Header */
+.header {
+  background: #2e4453;
+  padding: 8px 15px;
+  border-bottom: 3px solid #1c2e3a;
+}
+
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header h1 {
+  font-size: 18pt;
+  font-weight: bold;
+  color: #fff;
+  margin: 0;
+}
+
+.header-links {
+  display: flex;
+  gap: 15px;
+  font-size: 9pt;
+}
+
+.header-links a {
+  color: #fff;
+  font-weight: bold;
+}
+
+.header-links a:hover {
+  color: #ffa;
+}
+
+/* Nav breadcrumb */
+.nav-breadcrumb {
+  background: #f8f8f8;
+  padding: 6px 15px;
+  border-bottom: 1px solid #ccc;
+  font-size: 9pt;
+}
+
+.nav-breadcrumb-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Content container */
+.container {
+  max-width: 1200px;
+  margin: 20px auto;
+  padding: 0 15px;
+}
+
+/* Launch section */
+.launch-section {
+  background: #fff;
+  border: 1px solid #c0c0c0;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.launch-section h2 {
+  font-size: 14pt;
+  color: #2e4453;
+  margin-bottom: 15px;
+  border-bottom: 2px solid #2e4453;
+  padding-bottom: 5px;
+}
+
+.launch-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-group label {
+  font-weight: bold;
+  font-size: 9pt;
+}
+
+.form-group input,
+.form-group textarea {
+  padding: 6px;
+  border: 1px solid #999;
+  font-family: Verdana, Arial, sans-serif;
+  font-size: 10pt;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.btn {
+  padding: 8px 16px;
+  background: #2e4453;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 10pt;
+  align-self: flex-start;
+}
+
+.btn:hover {
+  background: #3d5a6d;
+}
+
+.btn:disabled {
+  background: #999;
+  cursor: not-allowed;
+}
+
+/* Board/Thread Table */
+.board-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid #c0c0c0;
+}
+
+.board-table th {
+  background: #d7dfe8;
+  padding: 8px;
+  text-align: left;
+  font-size: 9pt;
+  font-weight: bold;
+  border-bottom: 1px solid #aaa;
+}
+
+.board-table td {
+  padding: 8px;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 10pt;
+}
+
+.board-table tr:hover {
+  background: #f4f6f8;
+}
+
+.thread-title {
+  font-weight: bold;
+  font-size: 11pt;
+}
+
+.thread-meta {
+  font-size: 9pt;
+  color: #666;
+  margin-top: 3px;
+}
+
+/* Thread View */
+.thread-container {
+  background: #fff;
+  border: 1px solid #c0c0c0;
+  margin-bottom: 20px;
+}
+
+.thread-header {
+  background: #d7dfe8;
+  padding: 10px 15px;
+  border-bottom: 1px solid #aaa;
+}
+
+.thread-header h2 {
+  font-size: 14pt;
+  color: #2e4453;
+  margin: 0;
+}
+
+/* Post */
+.post {
+  display: flex;
+  border-bottom: 1px solid #d0d0d0;
+}
+
+.post:last-child {
+  border-bottom: none;
+}
+
+.post-author {
+  width: 180px;
+  background: #e7edf3;
+  padding: 10px;
+  border-right: 1px solid #d0d0d0;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.post-author-name {
+  font-weight: bold;
+  font-size: 10pt;
+  margin-bottom: 5px;
+  word-wrap: break-word;
+}
+
+.post-author-avatar {
+  width: 80px;
+  height: 80px;
+  margin: 8px auto;
+  border: 1px solid #999;
+  background: #fff;
+}
+
+.post-author-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.post-author-info {
+  font-size: 8pt;
+  color: #666;
+  margin-top: 5px;
+}
+
+.post-content {
+  flex: 1;
+  padding: 12px 15px;
+}
+
+.post-meta {
+  font-size: 8pt;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.post-body {
+  font-size: 10pt;
+  line-height: 1.5;
+}
+
+/* Coin stats in first post */
+.coin-stats {
+  background: #fafafa;
+  border: 1px solid #d0d0d0;
+  padding: 12px;
+  margin: 10px 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.coin-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.coin-stat-label {
+  font-size: 8pt;
+  color: #666;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.coin-stat-value {
+  font-size: 11pt;
+  font-weight: bold;
+  color: #2e4453;
+  margin-top: 2px;
+}
+
+/* Reply form */
+.reply-section {
+  background: #fff;
+  border: 1px solid #c0c0c0;
+  padding: 15px;
+}
+
+.reply-section h3 {
+  font-size: 12pt;
+  color: #2e4453;
+  margin-bottom: 10px;
+}
+
+/* Footer */
+.footer {
+  background: #2e4453;
+  color: #fff;
+  padding: 15px;
+  text-align: center;
+  font-size: 8pt;
+  margin-top: 40px;
+}
+
+.footer a {
+  color: #fff;
+}
+
+/* Status messages */
+.status-msg {
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 3px;
+  font-size: 10pt;
+}
+
+.status-msg.success {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status-msg.error {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.status-msg.info {
+  background: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+/* Loading spinner */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ccc;
+  border-top-color: #2e4453;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
