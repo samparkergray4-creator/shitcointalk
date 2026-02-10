@@ -192,7 +192,8 @@ app.post('/api/launch/prepare', async (req, res) => {
       description,
       image: metadataUri, // Use metadataUri (mock or real IPFS) - for Firestore
       imageDataUrl: MOCK_MODE && !imageUrl ? image : (MOCK_MODE ? imageUrl : null), // Store base64/URL for mock mode display
-      creatorWallet: wallet,
+      creatorWallet: creatorKeypair.publicKey.toString(), // Fixed: use creator keypair, not user wallet
+      userWallet: wallet, // Store user wallet separately for reference
       creatorUsername,
       twitter: twitter || '',
       creatorPrivateKey: bs58.encode(creatorKeypair.secretKey),
