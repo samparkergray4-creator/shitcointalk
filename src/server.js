@@ -304,16 +304,28 @@ app.post('/api/launch/confirm', async (req, res) => {
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
       createSignature = 'MOCK_' + Math.random().toString(36).substr(2, 9);
     } else {
-      // Wait for confirmation
+      // Wait for transaction confirmation
       console.log(`Waiting for payment confirmation: ${signature}`);
-      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      try {
+        // Wait for transaction to be confirmed on-chain
+        const confirmation = await connection.confirmTransaction(signature, 'confirmed');
+        if (confirmation.value.err) {
+          console.error('Transaction failed:', confirmation.value.err);
+          return res.status(400).json({ success: false, error: 'Payment transaction failed' });
+        }
+        console.log('✅ Payment transaction confirmed');
+      } catch (error) {
+        console.error('Error confirming payment:', error);
+        return res.status(400).json({ success: false, error: 'Payment confirmation failed' });
+      }
 
       // Verify creator wallet has funds
       const creatorKeypair = Keypair.fromSecretKey(bs58.decode(tokenData.creatorPrivateKey));
       const balance = await connection.getBalance(creatorKeypair.publicKey);
 
       if (balance < 0.01 * LAMPORTS_PER_SOL) {
-        return res.status(400).json({ success: false, error: 'Payment not confirmed yet' });
+        return res.status(400).json({ success: false, error: 'Payment not received - please try again' });
       }
 
       // Create token via PumpPortal
