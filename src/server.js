@@ -55,25 +55,29 @@ function cacheSet(key, data, ttlMs) {
 // Convert IPFS URLs to HTTP gateway URLs
 function convertIpfsUrl(url) {
   if (!url) return url;
+
+  // Extract IPFS hash from various URL formats
+  let ipfsHash = null;
+
   if (url.startsWith('ipfs://')) {
-    const ipfsHash = url.replace('ipfs://', '');
-    // Use cloudflare IPFS gateway (faster and more reliable)
-    return `https://cloudflare-ipfs.com/ipfs/${ipfsHash}`;
-  }
-  // Also convert existing ipfs.io URLs to cloudflare
-  if (url.startsWith('https://ipfs.io/ipfs/')) {
-    const ipfsHash = url.replace('https://ipfs.io/ipfs/', '');
-    return `https://cloudflare-ipfs.com/ipfs/${ipfsHash}`;
-  }
-  // Convert mock URLs to Firebase Storage URLs
-  if (url.startsWith('mock://ipfs/')) {
+    ipfsHash = url.replace('ipfs://', '');
+  } else if (url.startsWith('https://ipfs.io/ipfs/')) {
+    ipfsHash = url.replace('https://ipfs.io/ipfs/', '');
+  } else if (url.startsWith('https://cloudflare-ipfs.com/ipfs/')) {
+    ipfsHash = url.replace('https://cloudflare-ipfs.com/ipfs/', '');
+  } else if (url.startsWith('mock://ipfs/')) {
     const mint = url.replace('mock://ipfs/', '');
-    // Construct Firebase Storage URL
     const projectId = process.env.FIREBASE_PROJECT_ID;
     if (projectId && projectId !== 'your-project-id') {
       return `https://storage.googleapis.com/${projectId}.firebasestorage.app/tokens/${mint}.png`;
     }
   }
+
+  // If we found an IPFS hash, use our image proxy
+  if (ipfsHash) {
+    return `/api/image/${ipfsHash}`;
+  }
+
   return url;
 }
 
@@ -540,50 +544,92 @@ app.get('/api/threads', async (req, res) => {
   }
 });
 
-// Get coin data from pump.fun
+// Image proxy to avoid CORS issues with IPFS
+app.get('/api/image/:hash', async (req, res) => {
+  try {
+    const { hash } = req.params;
+
+    // Try multiple IPFS gateways
+    const gateways = [
+      `https://cloudflare-ipfs.com/ipfs/${hash}`,
+      `https://ipfs.io/ipfs/${hash}`,
+      `https://dweb.link/ipfs/${hash}`
+    ];
+
+    for (const url of gateways) {
+      try {
+        const response = await fetch(url, { timeout: 5000 });
+        if (response.ok) {
+          const buffer = await response.arrayBuffer();
+          res.set('Content-Type', response.headers.get('content-type') || 'image/png');
+          res.set('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+          return res.send(Buffer.from(buffer));
+        }
+      } catch (err) {
+        console.log(`Gateway ${url} failed, trying next...`);
+      }
+    }
+
+    res.status(404).send('Image not found');
+  } catch (error) {
+    console.error('Image proxy error:', error.message);
+    res.status(500).send('Failed to fetch image');
+  }
+});
+
+// Get coin data from DexScreener (more reliable than pump.fun API)
 app.get('/api/coin/:mint', async (req, res) => {
   try {
     const { mint } = req.params;
 
     console.log(`Fetching coin data for ${mint}...`);
 
-    // Fetch from pump.fun API
-    const response = await fetch(`https://frontend-api.pump.fun/coins/${mint}`, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0'
+    // First try DexScreener for market data
+    let marketData = null;
+    try {
+      const dexResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`);
+      if (dexResponse.ok) {
+        const dexData = await dexResponse.json();
+        if (dexData.pairs && dexData.pairs.length > 0) {
+          // Use the first pair (usually the main trading pair)
+          const pair = dexData.pairs[0];
+          marketData = {
+            marketCap: parseFloat(pair.fdv || pair.marketCap || 0),
+            volume24h: parseFloat(pair.volume?.h24 || 0),
+            priceUsd: parseFloat(pair.priceUsd || 0),
+            priceChange24h: parseFloat(pair.priceChange?.h24 || 0),
+            liquidity: parseFloat(pair.liquidity?.usd || 0)
+          };
+          console.log(`DexScreener data found: MC=$${marketData.marketCap.toFixed(0)}, Vol=$${marketData.volume24h.toFixed(0)}`);
+        }
       }
-    });
-
-    console.log(`Pump.fun API response status: ${response.status}`);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Pump.fun API error:', errorText);
-      return res.status(404).json({ success: false, error: 'Coin not found on pump.fun' });
+    } catch (error) {
+      console.error('DexScreener API error:', error.message);
     }
 
-    const data = await response.json();
-    console.log(`Coin data received:`, {
-      name: data.name,
-      marketCap: data.usd_market_cap,
-      hasImage: !!data.image_uri
-    });
+    // Get token metadata from Firebase
+    const thread = await getThread(mint);
 
-    // Return formatted data
+    if (!thread) {
+      return res.status(404).json({ success: false, error: 'Token not found' });
+    }
+
+    // Return combined data
     res.json({
       success: true,
-      mint: data.mint,
-      name: data.name,
-      symbol: data.symbol,
-      description: data.description,
-      image: convertIpfsUrl(data.image_uri),
-      marketCap: data.usd_market_cap || 0,
-      volume24h: data.volume_24h || 0,
-      priceUsd: data.price || 0,
-      creatorAddress: data.creator,
-      twitter: data.twitter,
-      telegram: data.telegram,
-      website: data.website
+      mint: thread.mint,
+      name: thread.name,
+      symbol: thread.symbol,
+      description: thread.description,
+      image: convertIpfsUrl(thread.image),
+      creatorUsername: thread.creatorUsername,
+      twitter: thread.twitter,
+      marketCap: marketData?.marketCap || 0,
+      volume24h: marketData?.volume24h || 0,
+      priceUsd: marketData?.priceUsd || 0,
+      priceChange24h: marketData?.priceChange24h || 0,
+      liquidity: marketData?.liquidity || 0,
+      createdAt: thread.createdAt?._seconds || thread.createdAt
     });
   } catch (error) {
     console.error('Error fetching coin data:', error.message);
