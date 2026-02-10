@@ -8,10 +8,11 @@ document.getElementById('launchForm').addEventListener('submit', async (e) => {
   btn.disabled = true;
 
   try {
-    // Step 0: Generate mock wallet address (valid base58 format)
-    showStatus('statusMsg', '🔧 Mock mode - skipping wallet connection', 'info');
-    const wallet = '11111111111111111111111111111111'; // Valid base58 Solana address
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Step 0: Connect Phantom wallet
+    showStatus('statusMsg', 'Connecting to Phantom wallet...', 'info');
+    const wallet = await connectWallet();
+    showStatus('statusMsg', `✅ Connected: ${wallet.substring(0, 4)}...${wallet.substring(wallet.length - 4)}`, 'success');
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Step 1: Collect form data
     const creatorUsername = document.getElementById('creatorUsername').value.trim();
@@ -57,12 +58,14 @@ document.getElementById('launchForm').addEventListener('submit', async (e) => {
       throw new Error(createData.error);
     }
 
-    // Step 4: Sign and send transaction (mock mode always skips this)
-    showStatus('statusMsg', '🔧 Mock mode: skipping transaction signature...', 'info');
-    const signature = 'MOCK_SIGNATURE_' + Math.random().toString(36).substr(2, 9);
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Step 4: Sign and send transaction with Phantom
+    showStatus('statusMsg', '💰 Please approve the transaction in Phantom (0.05 SOL)...', 'info');
+    btn.innerHTML = 'Waiting for Phantom... <span class="spinner"></span>';
 
+    const signature = await signTransaction(createData.transaction);
+    showStatus('statusMsg', '✅ Transaction confirmed!', 'success');
     console.log('Payment signature:', signature);
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Step 5: Confirm and deploy token
     showStatus('statusMsg', 'Deploying token on pump.fun... (this may take ~15 seconds)', 'info');
