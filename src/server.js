@@ -57,7 +57,13 @@ function convertIpfsUrl(url) {
   if (!url) return url;
   if (url.startsWith('ipfs://')) {
     const ipfsHash = url.replace('ipfs://', '');
-    return `https://ipfs.io/ipfs/${ipfsHash}`;
+    // Use cloudflare IPFS gateway (faster and more reliable)
+    return `https://cloudflare-ipfs.com/ipfs/${ipfsHash}`;
+  }
+  // Also convert existing ipfs.io URLs to cloudflare
+  if (url.startsWith('https://ipfs.io/ipfs/')) {
+    const ipfsHash = url.replace('https://ipfs.io/ipfs/', '');
+    return `https://cloudflare-ipfs.com/ipfs/${ipfsHash}`;
   }
   // Convert mock URLs to Firebase Storage URLs
   if (url.startsWith('mock://ipfs/')) {
@@ -534,14 +540,29 @@ app.get('/api/coin/:mint', async (req, res) => {
   try {
     const { mint } = req.params;
 
+    console.log(`Fetching coin data for ${mint}...`);
+
     // Fetch from pump.fun API
-    const response = await fetch(`https://frontend-api.pump.fun/coins/${mint}`);
+    const response = await fetch(`https://frontend-api.pump.fun/coins/${mint}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0'
+      }
+    });
+
+    console.log(`Pump.fun API response status: ${response.status}`);
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Pump.fun API error:', errorText);
       return res.status(404).json({ success: false, error: 'Coin not found on pump.fun' });
     }
 
     const data = await response.json();
+    console.log(`Coin data received:`, {
+      name: data.name,
+      marketCap: data.usd_market_cap,
+      hasImage: !!data.image_uri
+    });
 
     // Return formatted data
     res.json({
@@ -560,7 +581,7 @@ app.get('/api/coin/:mint', async (req, res) => {
       website: data.website
     });
   } catch (error) {
-    console.error('Error fetching coin data:', error);
+    console.error('Error fetching coin data:', error.message);
     res.status(500).json({ success: false, error: 'Failed to fetch coin data' });
   }
 });
