@@ -710,34 +710,64 @@ app.get('/api/image/:hash', async (req, res) => {
   }
 });
 
-// Get coin data from DexScreener (more reliable than pump.fun API)
+// Get coin data - tries pump.fun first, then DexScreener
 app.get('/api/coin/:mint', async (req, res) => {
   try {
     const { mint } = req.params;
 
-    console.log(`Fetching coin data for ${mint}...`);
-
-    // First try DexScreener for market data
     let marketData = null;
+
+    // Try pump.fun API first (for bonding curve tokens)
     try {
-      const dexResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`);
-      if (dexResponse.ok) {
-        const dexData = await dexResponse.json();
-        if (dexData.pairs && dexData.pairs.length > 0) {
-          // Use the first pair (usually the main trading pair)
-          const pair = dexData.pairs[0];
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+
+      const pumpResponse = await fetch(`https://frontend-api.pump.fun/coins/${mint}`, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'application/json',
+          'Referer': 'https://pump.fun/'
+        }
+      });
+      clearTimeout(timeout);
+
+      if (pumpResponse.ok) {
+        const pumpData = await pumpResponse.json();
+        if (pumpData.usd_market_cap) {
           marketData = {
-            marketCap: parseFloat(pair.fdv || pair.marketCap || 0),
-            volume24h: parseFloat(pair.volume?.h24 || 0),
-            priceUsd: parseFloat(pair.priceUsd || 0),
-            priceChange24h: parseFloat(pair.priceChange?.h24 || 0),
-            liquidity: parseFloat(pair.liquidity?.usd || 0)
+            marketCap: pumpData.usd_market_cap || 0,
+            volume24h: pumpData.volume_24h || 0,
+            priceUsd: pumpData.price || 0,
+            holders: pumpData.holder_count || 0
           };
-          console.log(`DexScreener data found: MC=$${marketData.marketCap.toFixed(0)}, Vol=$${marketData.volume24h.toFixed(0)}`);
+          console.log(`pump.fun data: MC=$${marketData.marketCap.toFixed(0)}, Holders=${marketData.holders}`);
         }
       }
     } catch (error) {
-      console.error('DexScreener API error:', error.message);
+      console.log(`pump.fun API failed: ${error.message}`);
+    }
+
+    // Fallback to DexScreener (for graduated tokens on Raydium)
+    if (!marketData) {
+      try {
+        const dexResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`);
+        if (dexResponse.ok) {
+          const dexData = await dexResponse.json();
+          if (dexData.pairs && dexData.pairs.length > 0) {
+            const pair = dexData.pairs[0];
+            marketData = {
+              marketCap: parseFloat(pair.fdv || pair.marketCap || 0),
+              volume24h: parseFloat(pair.volume?.h24 || 0),
+              priceUsd: parseFloat(pair.priceUsd || 0),
+              holders: 0
+            };
+            console.log(`DexScreener data: MC=$${marketData.marketCap.toFixed(0)}`);
+          }
+        }
+      } catch (error) {
+        console.log(`DexScreener API failed: ${error.message}`);
+      }
     }
 
     // Get token metadata from Firebase
@@ -747,7 +777,6 @@ app.get('/api/coin/:mint', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Token not found' });
     }
 
-    // Return combined data
     res.json({
       success: true,
       mint: thread.mint,
@@ -760,8 +789,7 @@ app.get('/api/coin/:mint', async (req, res) => {
       marketCap: marketData?.marketCap || 0,
       volume24h: marketData?.volume24h || 0,
       priceUsd: marketData?.priceUsd || 0,
-      priceChange24h: marketData?.priceChange24h || 0,
-      liquidity: marketData?.liquidity || 0,
+      holders: marketData?.holders || 0,
       createdAt: thread.createdAt?._seconds || thread.createdAt
     });
   } catch (error) {
