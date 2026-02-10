@@ -231,6 +231,40 @@ function sortThreadsData() {
   });
 }
 
+// Fetch and update coin stats from pump.fun
+async function updateCoinStats(mint) {
+  try {
+    const response = await fetch(`/api/coin/${mint}`);
+    if (!response.ok) return;
+
+    const coin = await response.json();
+
+    // Update market cap
+    const mcEl = document.getElementById(`mc-${mint}`);
+    if (mcEl && coin.marketCap) {
+      mcEl.textContent = '$' + formatNumber(coin.marketCap);
+    }
+
+    // Update volume
+    const volEl = document.getElementById(`vol-${mint}`);
+    if (volEl && coin.volume24h) {
+      volEl.textContent = '$' + formatNumber(coin.volume24h);
+    }
+  } catch (error) {
+    console.error('Error fetching stats for', mint, error);
+  }
+}
+
+// Format large numbers (e.g., 1234567 -> "1.23M")
+function formatNumber(num) {
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(2) + 'M';
+  } else if (num >= 1000) {
+    return (num / 1000).toFixed(2) + 'K';
+  }
+  return num.toFixed(2);
+}
+
 // Render threads to table
 function renderThreads() {
   const tbody = document.getElementById('coinsList');
@@ -306,6 +340,11 @@ function renderThreads() {
         </tr>
       `;
     }).join('');
+
+  // Fetch stats for each coin
+  threadsToRender.forEach(thread => {
+    updateCoinStats(thread.mint);
+  });
 }
 
 // Helper functions

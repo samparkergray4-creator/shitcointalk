@@ -529,6 +529,42 @@ app.get('/api/threads', async (req, res) => {
   }
 });
 
+// Get coin data from pump.fun
+app.get('/api/coin/:mint', async (req, res) => {
+  try {
+    const { mint } = req.params;
+
+    // Fetch from pump.fun API
+    const response = await fetch(`https://frontend-api.pump.fun/coins/${mint}`);
+
+    if (!response.ok) {
+      return res.status(404).json({ success: false, error: 'Coin not found on pump.fun' });
+    }
+
+    const data = await response.json();
+
+    // Return formatted data
+    res.json({
+      success: true,
+      mint: data.mint,
+      name: data.name,
+      symbol: data.symbol,
+      description: data.description,
+      image: convertIpfsUrl(data.image_uri),
+      marketCap: data.usd_market_cap || 0,
+      volume24h: data.volume_24h || 0,
+      priceUsd: data.price || 0,
+      creatorAddress: data.creator,
+      twitter: data.twitter,
+      telegram: data.telegram,
+      website: data.website
+    });
+  } catch (error) {
+    console.error('Error fetching coin data:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch coin data' });
+  }
+});
+
 // ===== COMMENT ENDPOINTS =====
 
 // Get comments for a thread
