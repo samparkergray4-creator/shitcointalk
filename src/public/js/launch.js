@@ -127,6 +127,11 @@ let searchQuery = '';
 async function loadRecentCoins() {
   const tbody = document.getElementById('coinsList');
 
+  // Skip if not on homepage (element doesn't exist on thread pages)
+  if (!tbody) {
+    return;
+  }
+
   try {
     const response = await fetch('/api/threads');
     const data = await response.json();
@@ -268,6 +273,12 @@ function formatNumber(num) {
 // Render threads to table
 function renderThreads() {
   const tbody = document.getElementById('coinsList');
+
+  // Skip if not on homepage
+  if (!tbody) {
+    return;
+  }
+
   const threadsToRender = filteredThreads.length > 0 || searchQuery ? filteredThreads : currentThreads;
 
   if (threadsToRender.length === 0 && searchQuery) {

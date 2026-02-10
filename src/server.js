@@ -549,28 +549,43 @@ app.get('/api/image/:hash', async (req, res) => {
   try {
     const { hash } = req.params;
 
-    // Try multiple IPFS gateways
+    // Try multiple IPFS gateways with longer timeout
     const gateways = [
-      `https://cloudflare-ipfs.com/ipfs/${hash}`,
       `https://ipfs.io/ipfs/${hash}`,
-      `https://dweb.link/ipfs/${hash}`
+      `https://gateway.pinata.cloud/ipfs/${hash}`,
+      `https://cloudflare-ipfs.com/ipfs/${hash}`,
+      `https://dweb.link/ipfs/${hash}`,
+      `https://nftstorage.link/ipfs/${hash}`
     ];
 
     for (const url of gateways) {
       try {
-        const response = await fetch(url, { timeout: 5000 });
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+        const response = await fetch(url, {
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'Mozilla/5.0'
+          }
+        });
+        clearTimeout(timeout);
+
         if (response.ok) {
           const buffer = await response.arrayBuffer();
           res.set('Content-Type', response.headers.get('content-type') || 'image/png');
           res.set('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+          console.log(`✅ Image ${hash} loaded from ${url}`);
           return res.send(Buffer.from(buffer));
         }
       } catch (err) {
-        console.log(`Gateway ${url} failed, trying next...`);
+        console.log(`Gateway ${url} failed: ${err.message}`);
       }
     }
 
-    res.status(404).send('Image not found');
+    console.error(`❌ All gateways failed for image ${hash}`);
+    // Return a placeholder image instead of 404
+    res.redirect('https://via.placeholder.com/200x200/d3dce3/476C8E?text=💎');
   } catch (error) {
     console.error('Image proxy error:', error.message);
     res.status(500).send('Failed to fetch image');
