@@ -3,116 +3,212 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Thread - Bitcointalk Launchpad</title>
+  <title>Thread - shitcoin forum</title>
   <link rel="stylesheet" href="/css/bitcointalk.css">
 </head>
 <body>
-  <!-- Header -->
-  <div class="header">
-    <div class="header-inner">
-      <h1>Bitcointalk Launchpad</h1>
-      <div class="header-links">
-        <a href="/">Home</a>
-        <a href="/#launch">Launch</a>
-        <a href="/#coins">Coins</a>
-      </div>
-    </div>
+
+<!-- ===== HEADER ===== -->
+<div id="header_area">
+  <div class="tborder">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td class="catbg" height="32">
+          <span style="font-family: Verdana, sans-serif; font-size: 140%;">shitcoin forum</span>
+        </td>
+        <td align="right" class="catbg">
+          <img src="/images/smflogo.gif" style="margin: 2px;" alt="" />
+        </td>
+      </tr>
+    </table>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td class="titlebg2" height="32" align="right">
+          <span class="smalltext" id="currentDate"></span>
+        </td>
+      </tr>
+      <tr>
+        <td valign="top" colspan="2">
+          <table width="100%" class="bordercolor" cellpadding="8" cellspacing="1" border="0" style="margin-top: 1px;">
+            <tr>
+              <td colspan="2" width="100%" valign="top" class="windowbg2">
+                <span class="middletext"><a href="/" class="nav">shitcoin forum</a> &gt; <a href="/#coins" class="nav">Shitcoin Discussions</a> &gt; <span id="breadcrumbTitle">Loading...</span></span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+    <table width="100%" cellpadding="4" cellspacing="0" border="0">
+      <tr>
+        <td width="90%" class="titlebg2">
+          <span class="smalltext"><b>News:</b> BitcoinTalk coins are for boomers, get with the times and launch your own ShitcoinTalk coin.</span>
+        </td>
+        <td class="titlebg2" align="right" nowrap="nowrap" valign="top">
+          <input type="text" id="searchInputThread" placeholder="Search coins..." style="width: 190px;" onkeypress="if(event.key==='Enter'){window.location.href='/#coins?search='+encodeURIComponent(this.value);}" />&nbsp;
+          <button onclick="window.location.href='/#coins?search='+encodeURIComponent(document.getElementById('searchInputThread').value);" style="width: 11ex; cursor: pointer;">Search</button>
+        </td>
+      </tr>
+    </table>
   </div>
+</div>
 
-  <!-- Breadcrumb -->
-  <div class="nav-breadcrumb">
-    <div class="nav-breadcrumb-inner">
-      <a href="/">Bitcointalk Launchpad</a> &gt; <span id="breadcrumbTitle">Loading...</span>
-    </div>
+<!-- ===== NAVIGATION TABS ===== -->
+<table cellpadding="0" cellspacing="0" border="0" style="margin-left: 10px;">
+  <tr>
+    <td class="maintab_first">&nbsp;</td>
+    <td valign="top" class="maintab_back"><a href="/">Home</a></td>
+    <td valign="top" class="maintab_back"><a href="/#launch">Launch</a></td>
+    <td class="maintab_active_first">&nbsp;</td>
+    <td valign="top" class="maintab_active_back"><a href="/#coins">Coins</a></td>
+    <td class="maintab_active_last">&nbsp;</td>
+    <td class="maintab_last">&nbsp;</td>
+  </tr>
+</table>
+
+<!-- ===== BREADCRUMB ===== -->
+<div style="padding: 1ex 0px 2ex 0px;">
+  <div class="nav" style="font-size: smaller; margin-bottom: 2ex; margin-top: 2ex;">
+    <b><a href="/" class="nav">shitcoin forum</a></b> &gt;
+    <b><a href="/#coins" class="nav">Shitcoin Discussions</a></b> &gt;
+    <b id="breadcrumbTitle2">Loading...</b>
   </div>
+</div>
 
-  <!-- Main Content -->
-  <div class="container">
+<!-- ===== THREAD ===== -->
+<div class="tborder">
 
-    <!-- Thread -->
-    <div class="thread-container">
-      <div class="thread-header">
-        <h2 id="threadTitle">Loading...</h2>
-      </div>
+  <!-- Thread title bar -->
+  <table class="bordercolor board_table" cellspacing="1" cellpadding="4" width="100%">
+    <tr class="catbg">
+      <td><b id="threadTitle">Loading...</b></td>
+    </tr>
+  </table>
 
-      <!-- First Post (Coin Stats) -->
-      <div class="post" id="firstPost">
-        <div class="post-author">
-          <div class="post-author-name">Creator</div>
-          <div class="post-author-avatar">
-            <img id="coinImage" src="" alt="Coin">
+  <!-- First post (coin stats) -->
+  <table class="bordercolor post_table" cellspacing="1" cellpadding="4" width="100%">
+    <tr>
+      <td class="titlebg" colspan="2">
+        <span id="coinPostDate">Loading...</span>
+      </td>
+    </tr>
+    <tr>
+      <td class="post_author windowbg" valign="top">
+        <div class="poster_name"><a id="creatorUsername">Creator</a></div>
+        <div class="poster_rank">⭐ Coin Launcher</div>
+        <div class="poster_avatar">
+          <img id="coinImage" src="" alt="">
+        </div>
+        <div class="poster_info">
+          Activity: N/A<br>
+          Merit: 0
+        </div>
+      </td>
+      <td class="post_body windowbg" valign="top">
+        <div style="font-size: 10px; color: #666; margin-bottom: 10px;" id="coinMeta"></div>
+
+        <!-- Main Discussion Post -->
+        <div style="margin-bottom: 20px;">
+          <h2 style="font-size: 16px; font-weight: bold; margin-bottom: 12px; color: #2e4453;">
+            <span id="coinName"></span> (<span id="coinSymbol"></span>)
+          </h2>
+          <div id="coinDescription" style="font-size: 13px; line-height: 1.6; margin-bottom: 16px; white-space: pre-wrap;"></div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid #d7dfe8; margin: 16px 0;">
+
+        <!-- Live Stats -->
+        <div class="coin_stats">
+          <div style="font-weight: bold; margin-bottom: 8px; font-size: 12px;">📊 Live Stats</div>
+          <table>
+            <tr>
+              <td class="stat_label">Market Cap</td>
+              <td class="stat_value" id="statMC">&mdash;</td>
+              <td class="stat_label">24h Volume</td>
+              <td class="stat_value" id="statVolume">&mdash;</td>
+            </tr>
+            <tr>
+              <td class="stat_label">Holders</td>
+              <td class="stat_value" id="statHolders">0</td>
+              <td class="stat_label">Comments</td>
+              <td class="stat_value" id="statComments">0</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="margin-top: 16px; font-size: 11px; color: #555; padding: 10px; background: #f5f7f9; border-left: 3px solid #2e4453;">
+          <div style="margin-bottom: 6px;">
+            <b>Contract Address:</b><br>
+            <code id="coinMint" style="font-size: 10px; word-break: break-all;"></code>
+            <button id="copyMintBtn" onclick="copyMintAddress()" style="margin-left: 8px; padding: 3px 10px; font-size: 10px; cursor: pointer; background: #d3dce3; border: 1px solid #999; border-radius: 3px;">📋 Copy</button>
+            <span id="copyStatus" style="margin-left: 6px; color: #080; font-size: 10px;"></span>
           </div>
-          <div class="post-author-info">
-            Launch Post
+          <div style="margin-top: 8px;">
+            <a id="pumpLink" href="#" target="_blank" style="font-weight: bold;">View on pump.fun &#8599;</a>
+          </div>
+          <div id="twitterLinkContainer" style="margin-top: 8px; display: none;">
+            <a id="twitterLink" href="#" target="_blank" style="font-weight: bold;">🐦 Follow on Twitter/X &#8599;</a>
           </div>
         </div>
-        <div class="post-content">
-          <div class="post-meta">
-            <span id="coinMeta">Loading...</span>
-          </div>
-          <div class="post-body">
-            <h3><span id="coinName"></span> (<span id="coinSymbol"></span>)</h3>
-            <p id="coinDescription"></p>
+      </td>
+    </tr>
+  </table>
 
-            <!-- Live Stats -->
-            <div class="coin-stats" id="coinStats">
-              <div class="coin-stat">
-                <span class="coin-stat-label">Market Cap</span>
-                <span class="coin-stat-value" id="statMC">-</span>
-              </div>
-              <div class="coin-stat">
-                <span class="coin-stat-label">24h Volume</span>
-                <span class="coin-stat-value" id="statVolume">-</span>
-              </div>
-              <div class="coin-stat">
-                <span class="coin-stat-label">Holders</span>
-                <span class="coin-stat-value" id="statHolders">-</span>
-              </div>
-              <div class="coin-stat">
-                <span class="coin-stat-label">Comments</span>
-                <span class="coin-stat-value" id="statComments">0</span>
-              </div>
-            </div>
-
-            <div style="margin-top: 15px; font-size: 9pt;">
-              <strong>Contract:</strong> <code id="coinMint"></code>
-              <br>
-              <a id="pumpLink" href="#" target="_blank">View on pump.fun</a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Comments -->
-      <div id="commentsList">
-        <!-- Comments will be loaded here -->
-      </div>
-    </div>
-
-    <!-- Reply Section -->
-    <div class="reply-section">
-      <h3>Post a Reply</h3>
-      <div id="replyStatus"></div>
-      <form class="launch-form" id="replyForm">
-        <div class="form-group">
-          <label for="username">Username</label>
-          <input type="text" id="username" name="username" placeholder="Enter username..." required>
-        </div>
-        <div class="form-group">
-          <label for="comment">Comment</label>
-          <textarea id="comment" name="comment" required placeholder="Share your thoughts..."></textarea>
-        </div>
-        <button type="submit" class="btn">Post Reply</button>
-      </form>
-    </div>
-
+  <!-- ===== COMMENTS ===== -->
+  <div id="commentsList">
+    <!-- Comments rendered here -->
   </div>
 
-  <!-- Footer -->
-  <div class="footer">
-    Bitcointalk Launchpad | Powered by Solana & pump.fun
-  </div>
+</div>
 
-  <script src="/js/thread.js"></script>
+<!-- ===== REPLY FORM ===== -->
+<div class="form_section" style="margin-top: 8px;">
+  <div class="section_title">Post a Reply</div>
+  <div class="form_inner">
+    <div id="replyStatus"></div>
+    <form id="replyForm">
+      <div class="form_row">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required placeholder="Enter username...">
+      </div>
+      <div class="form_row">
+        <label for="comment">Comment</label>
+        <textarea id="comment" name="comment" required placeholder="Share your thoughts..."></textarea>
+      </div>
+      <div class="form_row">
+        <button type="submit" class="button_submit">Post</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== FOOTER ===== -->
+<div id="footer">
+  Powered by PumpFun and God
+</div>
+
+<script>
+  function updateDate() {
+    var now = new Date();
+    var options = { year: 'numeric', month: 'long', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+    document.getElementById('currentDate').textContent = now.toLocaleString('en-US', options);
+  }
+  updateDate();
+  setInterval(updateDate, 1000);
+
+  function copyMintAddress() {
+    const mintAddress = document.getElementById('coinMint').textContent;
+    navigator.clipboard.writeText(mintAddress).then(() => {
+      const status = document.getElementById('copyStatus');
+      status.textContent = '✓ Copied!';
+      setTimeout(() => {
+        status.textContent = '';
+      }, 2000);
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+    });
+  }
+</script>
+<script src="/js/thread.js"></script>
 </body>
 </html>

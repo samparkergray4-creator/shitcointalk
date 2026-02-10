@@ -3,95 +3,165 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bitcointalk Launchpad - Home</title>
+  <title>shitcoin forum - Shitcoin Launchpad</title>
   <link rel="stylesheet" href="/css/bitcointalk.css">
 </head>
 <body>
-  <!-- Header -->
-  <div class="header">
-    <div class="header-inner">
-      <h1>Bitcointalk Launchpad</h1>
-      <div class="header-links">
-        <a href="/">Home</a>
-        <a href="#launch">Launch</a>
-        <a href="#coins">Coins</a>
+
+<!-- ===== HEADER ===== -->
+<div id="header_area">
+  <div class="tborder">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td class="catbg" height="32">
+          <span style="font-family: Verdana, sans-serif; font-size: 140%;">shitcoin forum</span>
+        </td>
+        <td align="right" class="catbg">
+          <img src="/images/smflogo.gif" style="margin: 2px;" alt="" />
+        </td>
+      </tr>
+    </table>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td class="titlebg2" height="32" align="right">
+          <span class="smalltext" id="currentDate"></span>
+        </td>
+      </tr>
+      <tr>
+        <td valign="top" colspan="2">
+          <table width="100%" class="bordercolor" cellpadding="8" cellspacing="1" border="0" style="margin-top: 1px;">
+            <tr>
+              <td colspan="2" width="100%" valign="top" class="windowbg2">
+                <span class="middletext">Welcome, <b>Trencher</b>. Please <a href="#launch">launch a coin</a> or <a href="#coins">browse discussions</a>.</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+    <table width="100%" cellpadding="4" cellspacing="0" border="0">
+      <tr>
+        <td width="90%" class="titlebg2">
+          <span class="smalltext"><b>News:</b> BitcoinTalk coins are for boomers, get with the times and launch your own ShitcoinTalk coin.</span>
+        </td>
+        <td class="titlebg2" align="right" nowrap="nowrap" valign="top">
+          <input type="text" id="searchInput" placeholder="Search coins..." style="width: 190px;" />&nbsp;
+          <button onclick="searchCoins()" style="width: 11ex; cursor: pointer;">Search</button>
+        </td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ===== NAVIGATION TABS ===== -->
+<table cellpadding="0" cellspacing="0" border="0" style="margin-left: 10px;">
+  <tr>
+    <td class="maintab_first">&nbsp;</td>
+    <td class="maintab_active_first">&nbsp;</td>
+    <td valign="top" class="maintab_active_back"><a href="/">Home</a></td>
+    <td class="maintab_active_last">&nbsp;</td>
+    <td valign="top" class="maintab_back"><a href="#launch">Launch</a></td>
+    <td valign="top" class="maintab_back"><a href="#coins">Coins</a></td>
+    <td class="maintab_last">&nbsp;</td>
+  </tr>
+</table>
+
+<!-- ===== BREADCRUMB ===== -->
+<div style="padding: 1ex 0px 2ex 0px;">
+  <div class="nav" style="font-size: smaller; margin-bottom: 2ex; margin-top: 2ex;"><b><a href="/" class="nav">shitcoin forum</a></b></div>
+</div>
+
+<!-- ===== LAUNCH SECTION ===== -->
+<div class="form_section" id="launch">
+  <div class="section_title">Launch Your Shitcoin on ShitcoinTalk</div>
+  <div class="form_inner">
+    <div id="statusMsg"></div>
+    <form id="launchForm">
+      <div class="form_row">
+        <label for="creatorUsername">Your Username</label>
+        <input type="text" id="creatorUsername" name="creatorUsername" required placeholder="e.g. BigDick69" maxlength="20">
+        <div style="font-size: 10px; color: #666; margin-top: 4px;">This will be your identity as the coin creator</div>
       </div>
-    </div>
-  </div>
-
-  <!-- Breadcrumb -->
-  <div class="nav-breadcrumb">
-    <div class="nav-breadcrumb-inner">
-      <a href="/">Bitcointalk Launchpad</a> &gt; Home
-    </div>
-  </div>
-
-  <!-- Main Content -->
-  <div class="container">
-
-    <!-- Launch Section -->
-    <div class="launch-section" id="launch">
-      <h2>Launch Your Memecoin</h2>
-
-      <div id="statusMsg"></div>
-
-      <form class="launch-form" id="launchForm">
-        <div class="form-group">
-          <label for="name">Token Name *</label>
-          <input type="text" id="name" name="name" required placeholder="e.g. My Awesome Coin">
+      <div class="form_row">
+        <label for="name">Token Name</label>
+        <input type="text" id="name" name="name" required placeholder="e.g. Buttcoin">
+      </div>
+      <div class="form_row">
+        <label for="symbol">Symbol</label>
+        <input type="text" id="symbol" name="symbol" required placeholder="e.g. BUTT" maxlength="10">
+      </div>
+      <div class="form_row">
+        <label for="description">Discussion Post (What's your vision? Why should people care?)</label>
+        <textarea id="description" name="description" rows="8" placeholder="This token is about big butts and is dedicated to butts of all shapes and sizes. It's something everyone can get behind." style="font-size: 12px;"></textarea>
+        <div style="font-size: 10px; color: #666; margin-top: 4px;">💡 Tip: This is your pitch to the community. Make it count!</div>
+      </div>
+      <div class="form_row">
+        <label for="twitter">Twitter (Optional)</label>
+        <input type="text" id="twitter" name="twitter" placeholder="e.g. @buttcoin_sol" maxlength="100">
+        <div style="font-size: 10px; color: #666; margin-top: 4px;">Link to your project's Twitter/X account</div>
+      </div>
+      <div class="form_row">
+        <label for="image">Token Image (PNG, JPG, GIF)</label>
+        <input type="file" id="image" name="image" accept="image/*" required>
+        <div id="imagePreview" style="margin-top: 10px; display: none;">
+          <img id="previewImg" src="" alt="Preview" style="max-width: 200px; max-height: 200px; border: 2px solid #d3dce3; border-radius: 8px;">
         </div>
-
-        <div class="form-group">
-          <label for="symbol">Symbol *</label>
-          <input type="text" id="symbol" name="symbol" required placeholder="e.g. MAC" maxlength="10">
-        </div>
-
-        <div class="form-group">
-          <label for="description">Description</label>
-          <textarea id="description" name="description" placeholder="Tell the community about your coin..."></textarea>
-        </div>
-
-        <div class="form-group">
-          <label for="image">Token Image * (PNG, JPG, GIF)</label>
-          <input type="file" id="image" name="image" accept="image/*" required>
-        </div>
-
-        <button type="submit" class="btn" id="launchBtn">
-          Launch Token (0.07 SOL)
-        </button>
-      </form>
-    </div>
-
-    <!-- Recent Coins -->
-    <div class="board-section" id="coins">
-      <table class="board-table">
-        <thead>
-          <tr>
-            <th>Coin</th>
-            <th>Market Cap</th>
-            <th>24h Volume</th>
-            <th>Holders</th>
-            <th>Replies</th>
-          </tr>
-        </thead>
-        <tbody id="coinsList">
-          <tr>
-            <td colspan="5" style="text-align: center; padding: 20px;">
-              Loading coins...
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
+      </div>
+      <div class="form_row">
+        <button type="submit" class="button_submit" id="launchBtn">Launch Token (0.05 SOL)</button>
+      </div>
+    </form>
   </div>
+</div>
 
-  <!-- Footer -->
-  <div class="footer">
-    Bitcointalk Launchpad | Powered by Solana & pump.fun
+<!-- ===== COIN LISTING ===== -->
+<div id="coins">
+  <div class="tborder" style="margin-top: 0;">
+    <div class="catbg" style="padding: 5px 5px 5px 10px;">
+      <a href="#coins">Shitcoin Discussions</a>
+    </div>
+    <table border="0" width="100%" cellspacing="1" cellpadding="5" class="bordercolor" style="margin-top: 1px;">
+      <tr class="titlebg">
+        <th style="width: 60px; text-align: center;"></th>
+        <th style="text-align: left;">Token</th>
+        <th style="width: 140px; text-align: left;">Contract</th>
+        <th style="width: 100px; text-align: right; cursor: pointer;" onclick="sortTable('mc')" title="Click to sort">
+          Market Cap <span id="sort-mc"></span>
+        </th>
+        <th style="width: 100px; text-align: right; cursor: pointer;" onclick="sortTable('volume')" title="Click to sort">
+          24h Volume <span id="sort-volume"></span>
+        </th>
+        <th style="width: 80px; text-align: center; cursor: pointer;" onclick="sortTable('replies')" title="Click to sort">
+          Replies <span id="sort-replies"></span>
+        </th>
+        <th style="width: 180px; text-align: left;">Last Activity</th>
+      </tr>
+      <tbody id="coinsList">
+        <tr>
+          <td class="windowbg" colspan="7" style="text-align: center; padding: 20px; color: #666;">
+            <div style="font-size: 12px;">Loading coins...</div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
+</div>
 
-  <script src="/js/wallet.js"></script>
-  <script src="/js/launch.js"></script>
+<!-- ===== FOOTER ===== -->
+<div id="footer">
+  Powered by PumpFun and God
+</div>
+
+<script>
+  function updateDate() {
+    var now = new Date();
+    var options = { year: 'numeric', month: 'long', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+    document.getElementById('currentDate').textContent = now.toLocaleString('en-US', options);
+  }
+  updateDate();
+  setInterval(updateDate, 1000);
+</script>
+<script src="/js/wallet.js"></script>
+<script src="/js/launch.js"></script>
 </body>
 </html>

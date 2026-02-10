@@ -8,14 +8,17 @@ document.getElementById('launchForm').addEventListener('submit', async (e) => {
   btn.disabled = true;
 
   try {
-    // Step 0: Connect wallet
-    showStatus('statusMsg', 'Connecting wallet...', 'info');
-    const wallet = await connectWallet();
+    // Step 0: Generate mock wallet address (valid base58 format)
+    showStatus('statusMsg', '🔧 Mock mode - skipping wallet connection', 'info');
+    const wallet = '11111111111111111111111111111111'; // Valid base58 Solana address
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     // Step 1: Collect form data
+    const creatorUsername = document.getElementById('creatorUsername').value.trim();
     const name = document.getElementById('name').value.trim();
     const symbol = document.getElementById('symbol').value.trim().toUpperCase();
     const description = document.getElementById('description').value.trim();
+    const twitter = document.getElementById('twitter').value.trim();
     const imageFile = document.getElementById('image').files[0];
 
     if (!imageFile) {
@@ -31,7 +34,7 @@ document.getElementById('launchForm').addEventListener('submit', async (e) => {
     const prepareRes = await fetch('/api/launch/prepare', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wallet, name, symbol, description, image: imageBase64 })
+      body: JSON.stringify({ wallet, name, symbol, description, image: imageBase64, creatorUsername, twitter })
     });
 
     const prepareData = await prepareRes.json();
@@ -54,14 +57,10 @@ document.getElementById('launchForm').addEventListener('submit', async (e) => {
       throw new Error(createData.error);
     }
 
-    // Step 4: Sign and send transaction
-    showStatus('statusMsg', 'Please approve the transaction in your wallet...', 'info');
-
-    // Decode and send transaction via Phantom
-    const txBuffer = Uint8Array.from(atob(createData.transaction), c => c.charCodeAt(0));
-    const { signature } = await window.solana.signAndSendTransaction(
-      window.solana.constructor.Transaction.from(txBuffer)
-    );
+    // Step 4: Sign and send transaction (mock mode always skips this)
+    showStatus('statusMsg', '🔧 Mock mode: skipping transaction signature...', 'info');
+    const signature = 'MOCK_SIGNATURE_' + Math.random().toString(36).substr(2, 9);
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     console.log('Payment signature:', signature);
 
@@ -113,19 +112,322 @@ function fileToBase64(file) {
   });
 }
 
-// Load recent coins (placeholder - will use Firebase later)
+// Sorting and filtering state
+let currentThreads = [];
+let filteredThreads = [];
+let sortColumn = 'replies'; // Default sort by replies
+let sortDirection = 'desc';
+let searchQuery = '';
+
+// Load recent coins from Firebase
 async function loadRecentCoins() {
-  // TODO: Fetch from Firebase
-  // For now, show empty state
   const tbody = document.getElementById('coinsList');
-  tbody.innerHTML = `
-    <tr>
-      <td colspan="5" style="text-align: center; padding: 20px; color: #666;">
-        No coins launched yet. Be the first!
-      </td>
-    </tr>
-  `;
+
+  try {
+    const response = await fetch('/api/threads');
+    const data = await response.json();
+
+    if (!data.success || !data.threads || data.threads.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td class="windowbg" colspan="7" style="text-align: center; padding: 20px; color: #666;">
+            No coins launched yet. Be the first!
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    // Store threads for sorting
+    currentThreads = data.threads;
+
+    // Apply search filter if active
+    applySearch();
+
+    // Sort and render
+    sortThreadsData();
+    renderThreads();
+
+  } catch (error) {
+    console.error('Error loading coins:', error);
+    tbody.innerHTML = `
+      <tr>
+        <td class="windowbg" colspan="7" style="text-align: center; padding: 20px; color: #999;">
+          Error loading coins. Please refresh.
+        </td>
+      </tr>
+    `;
+  }
 }
+
+// Apply search filter
+function applySearch() {
+  if (!searchQuery) {
+    filteredThreads = [...currentThreads];
+    return;
+  }
+
+  const query = searchQuery.toLowerCase();
+  filteredThreads = currentThreads.filter(thread => {
+    return (
+      thread.name?.toLowerCase().includes(query) ||
+      thread.symbol?.toLowerCase().includes(query) ||
+      thread.mint?.toLowerCase().includes(query) ||
+      thread.creatorUsername?.toLowerCase().includes(query)
+    );
+  });
+}
+
+// Sort threads based on current sort column and direction
+function sortThreadsData() {
+  const threadsToSort = filteredThreads.length > 0 || searchQuery ? filteredThreads : currentThreads;
+
+  threadsToSort.sort((a, b) => {
+    let aVal, bVal;
+
+    switch (sortColumn) {
+      case 'mc':
+        aVal = a.marketCap || 0;
+        bVal = b.marketCap || 0;
+        break;
+      case 'volume':
+        aVal = a.volume24h || 0;
+        bVal = b.volume24h || 0;
+        break;
+      case 'replies':
+        aVal = a.commentCount || 0;
+        bVal = b.commentCount || 0;
+        break;
+      default:
+        return 0;
+    }
+
+    if (sortDirection === 'asc') {
+      return aVal - bVal;
+    } else {
+      return bVal - aVal;
+    }
+  });
+
+  // Update sort indicators
+  ['mc', 'volume', 'replies'].forEach(col => {
+    const indicator = document.getElementById(`sort-${col}`);
+    if (indicator) {
+      if (col === sortColumn) {
+        indicator.textContent = sortDirection === 'asc' ? '▲' : '▼';
+        indicator.style.color = '#476C8E';
+      } else {
+        indicator.textContent = '';
+      }
+    }
+  });
+}
+
+// Render threads to table
+function renderThreads() {
+  const tbody = document.getElementById('coinsList');
+  const threadsToRender = filteredThreads.length > 0 || searchQuery ? filteredThreads : currentThreads;
+
+  if (threadsToRender.length === 0 && searchQuery) {
+    tbody.innerHTML = `
+      <tr>
+        <td class="windowbg" colspan="7" style="text-align: center; padding: 20px; color: #666;">
+          No coins found matching "${escapeHtml(searchQuery)}"
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = threadsToRender.map((thread, idx) => {
+      const bgClass = idx % 2 === 0 ? 'windowbg' : 'windowbg2';
+
+      // Format timestamp
+      let lastActivity = 'Just now';
+      if (thread.createdAt?._seconds) {
+        const date = new Date(thread.createdAt._seconds * 1000);
+        lastActivity = formatDate(date);
+      }
+
+      // Format image - convert IPFS URLs and show if it's a real URL or data URL (not mock://)
+      let imageUrl = thread.image;
+      if (imageUrl && imageUrl.startsWith('ipfs://')) {
+        const ipfsHash = imageUrl.replace('ipfs://', '');
+        imageUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+      }
+      const hasImage = imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:'));
+      const imageHtml = hasImage
+        ? `<img src="${imageUrl}" alt="${escapeHtml(thread.name)}" style="width: 40px; height: 40px; border-radius: 4px; object-fit: cover;" onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\\'width: 40px; height: 40px; background: #d3dce3; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 20px;\\'>💎</div>';">`
+        : `<div style="width: 40px; height: 40px; background: #d3dce3; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 20px;">💎</div>`;
+
+      // Shorten address for display
+      const shortAddress = thread.mint.substring(0, 4) + '...' + thread.mint.substring(thread.mint.length - 4);
+
+      return `
+        <tr class="${bgClass}">
+          <td align="center" style="padding: 8px;">
+            ${imageHtml}
+          </td>
+          <td style="padding: 8px;">
+            <div style="font-weight: bold; font-size: 13px; margin-bottom: 2px;">
+              <a href="/thread/${thread.mint}" style="color: #476C8E;">${escapeHtml(thread.name)} (${escapeHtml(thread.symbol)})</a>
+            </div>
+            <div style="font-size: 10px; color: #666;">
+              by <b>${escapeHtml(thread.creatorUsername || 'Anonymous')}</b>
+              ${thread.twitter ? ` • <a href="${normalizeTwitterUrl(thread.twitter)}" target="_blank" style="color: #1DA1F2;">🐦</a>` : ''}
+            </div>
+          </td>
+          <td style="padding: 8px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <code style="font-size: 10px; color: #555;" title="${thread.mint}">${shortAddress}</code>
+              <button onclick="copyAddress('${thread.mint}', this)" style="padding: 2px 6px; font-size: 9px; cursor: pointer; background: #d3dce3; border: 1px solid #999; border-radius: 3px; white-space: nowrap;">📋</button>
+            </div>
+          </td>
+          <td align="right" style="padding: 8px; font-size: 11px; color: #555;">
+            <span id="mc-${thread.mint}">—</span>
+          </td>
+          <td align="right" style="padding: 8px; font-size: 11px; color: #555;">
+            <span id="vol-${thread.mint}">—</span>
+          </td>
+          <td align="center" style="padding: 8px; font-size: 12px;">
+            ${thread.commentCount || 0}
+          </td>
+          <td style="padding: 8px; font-size: 11px; color: #666;">
+            ${lastActivity}
+          </td>
+        </tr>
+      `;
+    }).join('');
+}
+
+// Helper functions
+function formatDate(date) {
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+
+  return date.toLocaleDateString();
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function normalizeTwitterUrl(twitter) {
+  if (!twitter) return '';
+  if (twitter.startsWith('http')) return twitter;
+  const username = twitter.replace('@', '');
+  return `https://twitter.com/${username}`;
+}
+
+// Search coins function (global scope for onclick)
+window.searchCoins = function() {
+  const input = document.getElementById('searchInput');
+  searchQuery = input.value.trim();
+
+  applySearch();
+  sortThreadsData();
+  renderThreads();
+};
+
+// Allow Enter key to trigger search
+document.addEventListener('DOMContentLoaded', () => {
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) {
+    searchInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        searchCoins();
+      }
+    });
+
+    // Real-time search as user types
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value.trim();
+      applySearch();
+      sortThreadsData();
+      renderThreads();
+    });
+  }
+});
+
+// Sort table function (global scope for onclick)
+window.sortTable = function(column) {
+  if (sortColumn === column) {
+    // Toggle direction if clicking same column
+    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+  } else {
+    // New column, default to descending
+    sortColumn = column;
+    sortDirection = 'desc';
+  }
+
+  sortThreadsData();
+  renderThreads();
+};
+
+// Copy address function (global scope for onclick)
+window.copyAddress = function(address, button) {
+  navigator.clipboard.writeText(address).then(() => {
+    const originalText = button.textContent;
+    button.textContent = '✓';
+    button.style.background = '#90EE90';
+    setTimeout(() => {
+      button.textContent = originalText;
+      button.style.background = '#d3dce3';
+    }, 1500);
+  }).catch(err => {
+    console.error('Failed to copy:', err);
+    button.textContent = '✗';
+    setTimeout(() => {
+      button.textContent = '📋';
+    }, 1500);
+  });
+};
+
+// Check URL for search parameter on load
+window.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const searchParam = urlParams.get('search');
+
+  if (searchParam) {
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+      searchInput.value = searchParam;
+      searchQuery = searchParam;
+    }
+    // Scroll to coins section
+    setTimeout(() => {
+      document.getElementById('coins')?.scrollIntoView({ behavior: 'smooth' });
+    }, 500);
+  }
+});
 
 // Load coins on page load
 loadRecentCoins();
+
+// Reload coins every 30 seconds
+setInterval(loadRecentCoins, 30000);
+
+// Image preview handler
+document.getElementById('image').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('previewImg').src = e.target.result;
+      document.getElementById('imagePreview').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  } else {
+    document.getElementById('imagePreview').style.display = 'none';
+  }
+});
