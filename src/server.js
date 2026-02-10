@@ -20,7 +20,7 @@ const PORT = process.env.PORT || 3000;
 const RPC_URL = process.env.RPC_URL || 'https://api.mainnet-beta.solana.com';
 const TOTAL_LAUNCH_COST = 0.05; // Total SOL cost to user
 const PUMP_FUN_FEE = 0.02; // Approximate pump.fun creation fee
-const PLATFORM_WALLET = '9Y3vdkR8fyauAQkxgJenpqKu9qK2mXuxzyXp8DaK4jJu'; // Platform fee recipient
+const PLATFORM_WALLET = process.env.PLATFORM_WALLET || '9Y3vdkR8fyauAQkxgJenpqKu9qK2mXuxzyXp8DaK4jJu'; // Platform fee recipient
 const MOCK_MODE = process.env.MOCK_MODE === 'true';
 
 console.log('🔧 MOCK_MODE:', MOCK_MODE);
