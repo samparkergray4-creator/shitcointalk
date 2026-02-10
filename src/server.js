@@ -588,9 +588,19 @@ app.get('/api/image/:hash', async (req, res) => {
 
         if (response.ok) {
           const buffer = await response.arrayBuffer();
-          res.set('Content-Type', response.headers.get('content-type') || 'image/png');
-          res.set('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+          const contentType = response.headers.get('content-type') || 'image/png';
+
           console.log(`✅ Image ${hash} loaded from ${url}`);
+          console.log(`   Content-Type: ${contentType}, Size: ${buffer.byteLength} bytes`);
+
+          if (buffer.byteLength === 0) {
+            console.error(`❌ Empty buffer received for ${hash}`);
+            continue; // Try next gateway
+          }
+
+          res.set('Content-Type', contentType);
+          res.set('Cache-Control', 'public, max-age=31536000');
+          res.set('Content-Length', buffer.byteLength);
           return res.send(Buffer.from(buffer));
         }
       } catch (err) {
