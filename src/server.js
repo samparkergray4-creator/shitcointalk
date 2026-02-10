@@ -105,7 +105,8 @@ async function fetchPumpFunData(mint) {
 // Step 1: Prepare token (upload to IPFS, generate keypairs)
 app.post('/api/launch/prepare', async (req, res) => {
   try {
-    const { wallet, name, symbol, description, image, creatorUsername, twitter } = req.body;
+    const { wallet, name, symbol, description, image, creatorUsername, twitter, devBuy } = req.body;
+    const devBuyAmount = parseFloat(devBuy) || 0;
 
     if (!wallet || !name || !symbol || !image || !creatorUsername) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
@@ -248,10 +249,11 @@ app.post('/api/launch/prepare', async (req, res) => {
       twitter: twitter || '',
       creatorPrivateKey: bs58.encode(creatorKeypair.secretKey),
       mintPrivateKey: bs58.encode(mintKeypair.secretKey),
-      metadataUri
+      metadataUri,
+      devBuyAmount
     }, 600000); // 10 min expiry
 
-    const totalCost = MOCK_MODE ? 0 : TOTAL_LAUNCH_COST; // Free in mock mode
+    const totalCost = MOCK_MODE ? 0 : (TOTAL_LAUNCH_COST + devBuyAmount);
 
     res.json({
       success: true,
@@ -259,6 +261,7 @@ app.post('/api/launch/prepare', async (req, res) => {
       creatorWallet: creatorKeypair.publicKey.toString(),
       totalCost,
       metadataUri,
+      devBuyAmount,
       mockMode: MOCK_MODE
     });
 
@@ -301,7 +304,9 @@ app.post('/api/launch/create', async (req, res) => {
     // Build transaction: user sends SOL to creator wallet
     const transaction = new Transaction();
 
-    const fundingAmount = Math.ceil(TOTAL_LAUNCH_COST * LAMPORTS_PER_SOL);
+    const devBuyAmount = tokenData.devBuyAmount || 0;
+    const totalCost = TOTAL_LAUNCH_COST + devBuyAmount;
+    const fundingAmount = Math.ceil(totalCost * LAMPORTS_PER_SOL);
 
     transaction.add(
       SystemProgram.transfer({
@@ -329,7 +334,8 @@ app.post('/api/launch/create', async (req, res) => {
     console.log('Sending transaction data:');
     console.log('  User wallet (FROM):', userPubkey.toString());
     console.log('  Creator wallet (TO):', creatorPubkey.toString());
-    console.log('  Amount:', fundingAmount / LAMPORTS_PER_SOL, 'SOL');
+    console.log('  Platform fee: 0.05 SOL, Dev buy:', devBuyAmount, 'SOL');
+    console.log('  Total amount:', fundingAmount / LAMPORTS_PER_SOL, 'SOL');
 
     res.json({
       success: true,
@@ -402,7 +408,8 @@ app.post('/api/launch/confirm', async (req, res) => {
       // Create token via PumpPortal
       const mintKeypair = Keypair.fromSecretKey(bs58.decode(tokenData.mintPrivateKey));
 
-      console.log('Creating token on pump.fun...');
+      const devBuyAmount = tokenData.devBuyAmount || 0;
+      console.log(`Creating token on pump.fun... (dev buy: ${devBuyAmount} SOL)`);
       const createResponse = await fetch('https://pumpportal.fun/api/trade-local', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -416,7 +423,7 @@ app.post('/api/launch/confirm', async (req, res) => {
           },
           mint: mintKeypair.publicKey.toString(),
           denominatedInSol: 'true',
-          amount: 0, // No initial buy
+          amount: devBuyAmount,
           slippage: 15,
           priorityFee: 0.0005,
           pool: 'pump'

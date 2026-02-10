@@ -21,6 +21,7 @@ document.getElementById('launchForm').addEventListener('submit', async (e) => {
     const symbol = document.getElementById('symbol').value.trim().toUpperCase();
     const description = document.getElementById('description').value.trim();
     const twitter = document.getElementById('twitter').value.trim();
+    const devBuy = parseFloat(document.getElementById('devBuy').value) || 0;
     const imageFile = document.getElementById('image').files[0];
 
     if (!imageFile) {
@@ -36,7 +37,7 @@ document.getElementById('launchForm').addEventListener('submit', async (e) => {
     const prepareRes = await fetch('/api/launch/prepare', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wallet, name, symbol, description, image: imageBase64, creatorUsername, twitter })
+      body: JSON.stringify({ wallet, name, symbol, description, image: imageBase64, creatorUsername, twitter, devBuy })
     });
 
     const prepareData = await prepareRes.json();
@@ -47,6 +48,7 @@ document.getElementById('launchForm').addEventListener('submit', async (e) => {
     console.log('Token prepared:', prepareData);
 
     // Step 3: Create funding transaction
+    const totalCost = prepareData.totalCost || 0.05;
     showStatus('statusMsg', 'Building transaction...', 'info');
     const createRes = await fetch('/api/launch/create', {
       method: 'POST',
@@ -60,7 +62,7 @@ document.getElementById('launchForm').addEventListener('submit', async (e) => {
     }
 
     // Step 4: Sign and send transaction with Phantom
-    showStatus('statusMsg', '💰 Please approve the transaction in Phantom (0.05 SOL)...', 'info');
+    showStatus('statusMsg', `💰 Please approve the transaction in Phantom (${totalCost} SOL)...`, 'info');
     btn.innerHTML = 'Waiting for Phantom... <span class="spinner"></span>';
 
     const signature = await signTransaction(createData.transactionData);
@@ -474,6 +476,13 @@ loadRecentCoins();
 
 // Reload coins every 30 seconds
 setInterval(loadRecentCoins, 30000);
+
+// Update launch button text when dev buy changes
+document.getElementById('devBuy').addEventListener('input', function(e) {
+  const devBuy = parseFloat(e.target.value) || 0;
+  const total = (0.05 + devBuy).toFixed(2);
+  document.getElementById('launchBtn').textContent = `Launch Token (${total} SOL)`;
+});
 
 // Image preview handler
 document.getElementById('image').addEventListener('change', function(e) {
