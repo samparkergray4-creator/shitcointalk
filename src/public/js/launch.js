@@ -308,7 +308,7 @@ function renderThreads() {
         const ipfsHash = imageUrl.replace('ipfs://', '');
         imageUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
       }
-      const hasImage = imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:'));
+      const hasImage = imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('/api/'));
       const imageHtml = hasImage
         ? `<img src="${imageUrl}" alt="${escapeHtml(thread.name)}" style="width: 40px; height: 40px; border-radius: 4px; object-fit: cover;" onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\\'width: 40px; height: 40px; background: #d3dce3; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 20px;\\'>💎</div>';">`
         : `<div style="width: 40px; height: 40px; background: #d3dce3; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 20px;">💎</div>`;
