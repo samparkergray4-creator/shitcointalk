@@ -265,25 +265,21 @@ app.post('/api/launch/create', async (req, res) => {
     transaction.recentBlockhash = blockhash;
     transaction.feePayer = userPubkey;
 
-    // Don't serialize - send as JSON to avoid corruption
+    // Send transfer parameters instead of raw instruction data
     const txData = {
       recentBlockhash: blockhash,
       feePayer: userPubkey.toString(),
-      instructions: [{
-        programId: SystemProgram.programId.toString(),
-        keys: [
-          { pubkey: userPubkey.toString(), isSigner: true, isWritable: true },
-          { pubkey: creatorPubkey.toString(), isSigner: false, isWritable: true }
-        ],
-        data: transaction.instructions[0].data
-      }]
+      transfer: {
+        fromPubkey: userPubkey.toString(),
+        toPubkey: creatorPubkey.toString(),
+        lamports: fundingAmount
+      }
     };
 
     console.log('Sending transaction data:');
     console.log('  User wallet (FROM):', userPubkey.toString());
     console.log('  Creator wallet (TO):', creatorPubkey.toString());
-    console.log('  Instruction keys[0]:', txData.instructions[0].keys[0].pubkey);
-    console.log('  Instruction keys[1]:', txData.instructions[0].keys[1].pubkey);
+    console.log('  Amount:', fundingAmount / LAMPORTS_PER_SOL, 'SOL');
 
     res.json({
       success: true,

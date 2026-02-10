@@ -25,34 +25,31 @@ async function signTransaction(transactionData) {
     }
 
     console.log('Received transaction data:');
-    console.log('  feePayer:', transactionData.feePayer);
-    console.log('  Instruction keys received:', transactionData.instructions[0].keys);
+    console.log('  FROM:', transactionData.transfer.fromPubkey);
+    console.log('  TO:', transactionData.transfer.toPubkey);
+    console.log('  Amount:', transactionData.transfer.lamports / solanaWeb3.LAMPORTS_PER_SOL, 'SOL');
 
-    // Rebuild transaction from JSON data (avoids serialization corruption)
+    // Build transaction with proper SystemProgram.transfer instruction
     const transaction = new solanaWeb3.Transaction();
     transaction.recentBlockhash = transactionData.recentBlockhash;
     transaction.feePayer = new solanaWeb3.PublicKey(transactionData.feePayer);
 
-    // Add the transfer instruction
-    const instruction = transactionData.instructions[0];
+    // Add transfer instruction using SystemProgram (ensures correct encoding)
     transaction.add(
-      new solanaWeb3.TransactionInstruction({
-        keys: instruction.keys.map(k => ({
-          pubkey: new solanaWeb3.PublicKey(k.pubkey),
-          isSigner: k.isSigner,
-          isWritable: k.isWritable
-        })),
-        programId: new solanaWeb3.PublicKey(instruction.programId),
-        data: new Uint8Array(Object.values(instruction.data))
+      solanaWeb3.SystemProgram.transfer({
+        fromPubkey: new solanaWeb3.PublicKey(transactionData.transfer.fromPubkey),
+        toPubkey: new solanaWeb3.PublicKey(transactionData.transfer.toPubkey),
+        lamports: transactionData.transfer.lamports
       })
     );
 
-    console.log('Transaction feePayer:', transaction.feePayer.toString());
-    console.log('Transaction instructions:', transaction.instructions.length);
-    if (transaction.instructions[0]) {
-      const ix = transaction.instructions[0];
-      console.log('Instruction keys:', ix.keys.map(k => ({ pubkey: k.pubkey.toString(), isSigner: k.isSigner, isWritable: k.isWritable })));
-    }
+    console.log('Transaction built successfully');
+    console.log('  feePayer:', transaction.feePayer.toString());
+    console.log('  Instruction keys:', transaction.instructions[0].keys.map(k => ({
+      pubkey: k.pubkey.toString(),
+      isSigner: k.isSigner,
+      isWritable: k.isWritable
+    })));
 
     // Sign and send with Phantom
     const { signature } = await window.solana.signAndSendTransaction(transaction);
