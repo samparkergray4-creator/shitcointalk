@@ -18,15 +18,30 @@ async function connectWallet() {
   }
 }
 
-async function signTransaction(transactionBase64) {
+async function signTransaction(transactionData) {
   try {
     if (!window.solana || !walletAddress) {
       throw new Error('Wallet not connected');
     }
 
-    // Decode base64 transaction using web3.js
-    const transactionBuffer = Uint8Array.from(atob(transactionBase64), c => c.charCodeAt(0));
-    const transaction = solanaWeb3.Transaction.from(transactionBuffer);
+    // Rebuild transaction from JSON data (avoids serialization corruption)
+    const transaction = new solanaWeb3.Transaction();
+    transaction.recentBlockhash = transactionData.recentBlockhash;
+    transaction.feePayer = new solanaWeb3.PublicKey(transactionData.feePayer);
+
+    // Add the transfer instruction
+    const instruction = transactionData.instructions[0];
+    transaction.add(
+      new solanaWeb3.TransactionInstruction({
+        keys: instruction.keys.map(k => ({
+          pubkey: new solanaWeb3.PublicKey(k.pubkey),
+          isSigner: k.isSigner,
+          isWritable: k.isWritable
+        })),
+        programId: new solanaWeb3.PublicKey(instruction.programId),
+        data: Buffer.from(instruction.data)
+      })
+    );
 
     console.log('Transaction feePayer:', transaction.feePayer.toString());
     console.log('Transaction instructions:', transaction.instructions.length);

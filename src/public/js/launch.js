@@ -63,7 +63,7 @@ document.getElementById('launchForm').addEventListener('submit', async (e) => {
     showStatus('statusMsg', '💰 Please approve the transaction in Phantom (0.05 SOL)...', 'info');
     btn.innerHTML = 'Waiting for Phantom... <span class="spinner"></span>';
 
-    const signature = await signTransaction(createData.transaction);
+    const signature = await signTransaction(createData.transactionData);
     showStatus('statusMsg', '✅ Transaction confirmed!', 'success');
     console.log('Payment signature:', signature);
     await new Promise(resolve => setTimeout(resolve, 1000));

@@ -264,13 +264,21 @@ app.post('/api/launch/create', async (req, res) => {
     transaction.recentBlockhash = blockhash;
     transaction.feePayer = userPubkey;
 
-    const serializedTx = Buffer.from(
-      transaction.serialize({ requireAllSignatures: false })
-    ).toString('base64');
-
+    // Don't serialize - send as JSON to avoid corruption
     res.json({
       success: true,
-      transaction: serializedTx,
+      transactionData: {
+        recentBlockhash: blockhash,
+        feePayer: userPubkey.toString(),
+        instructions: [{
+          programId: SystemProgram.programId.toString(),
+          keys: [
+            { pubkey: userPubkey.toString(), isSigner: true, isWritable: true },
+            { pubkey: creatorPubkey.toString(), isSigner: false, isWritable: true }
+          ],
+          data: transaction.instructions[0].data
+        }]
+      },
       tokenMint,
       creatorWallet: tokenData.creatorWallet,
       message: 'Approve the transaction in your wallet'
