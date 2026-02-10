@@ -723,8 +723,15 @@ async function getPumpFunBondingCurve(mintAddress) {
       PUMP_FUN_PROGRAM
     );
 
+    console.log(`Bonding curve PDA for ${mintAddress}: ${bondingCurve.toString()}`);
+
     const accountInfo = await connection.getAccountInfo(bondingCurve);
-    if (!accountInfo || !accountInfo.data) return null;
+    if (!accountInfo || !accountInfo.data) {
+      console.log(`No bonding curve account found for ${mintAddress}`);
+      return null;
+    }
+
+    console.log(`Bonding curve data length: ${accountInfo.data.length}, owner: ${accountInfo.owner.toString()}`);
 
     const data = accountInfo.data;
 
