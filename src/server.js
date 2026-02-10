@@ -4,6 +4,7 @@ import { dirname, join } from 'path';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { Connection, PublicKey, Keypair, VersionedTransaction, LAMPORTS_PER_SOL, SystemProgram, Transaction } from '@solana/web3.js';
+import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferInstruction, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import bs58 from 'bs58';
 import { initializeFirebase, createThreadForCoin, getComments, addComment, getThread, uploadImage, getAllThreads } from './firebase.js';
 
@@ -456,6 +457,66 @@ app.post('/api/launch/confirm', async (req, res) => {
     }
 
     console.log(`Token created! TX: ${createSignature}`);
+
+    // Transfer dev buy tokens from creator wallet to user's wallet
+    if (!MOCK_MODE && tokenData.devBuyAmount > 0 && tokenData.userWallet) {
+      try {
+        const creatorKeypair = Keypair.fromSecretKey(bs58.decode(tokenData.creatorPrivateKey));
+        const mintKeypair = Keypair.fromSecretKey(bs58.decode(tokenData.mintPrivateKey));
+        const userPubkey = new PublicKey(tokenData.userWallet);
+        const mintPubkey = mintKeypair.publicKey;
+
+        // Get creator's token account
+        const creatorTokenAccount = await getAssociatedTokenAddress(mintPubkey, creatorKeypair.publicKey);
+
+        // Get/create user's token account
+        const userTokenAccount = await getAssociatedTokenAddress(mintPubkey, userPubkey);
+
+        // Check creator's token balance
+        const tokenBalance = await connection.getTokenAccountBalance(creatorTokenAccount);
+        const amount = BigInt(tokenBalance.value.amount);
+
+        if (amount > 0n) {
+          const transferTx = new Transaction();
+
+          // Create user's associated token account if it doesn't exist
+          try {
+            await connection.getTokenAccountBalance(userTokenAccount);
+          } catch {
+            // Account doesn't exist, create it
+            transferTx.add(
+              createAssociatedTokenAccountInstruction(
+                creatorKeypair.publicKey, // payer
+                userTokenAccount,         // associated token account
+                userPubkey,               // owner
+                mintPubkey                // mint
+              )
+            );
+          }
+
+          // Transfer all tokens to user
+          transferTx.add(
+            createTransferInstruction(
+              creatorTokenAccount,       // from
+              userTokenAccount,          // to
+              creatorKeypair.publicKey,  // authority
+              amount                     // amount
+            )
+          );
+
+          const { blockhash } = await connection.getLatestBlockhash('confirmed');
+          transferTx.recentBlockhash = blockhash;
+          transferTx.feePayer = creatorKeypair.publicKey;
+
+          const transferSig = await connection.sendTransaction(transferTx, [creatorKeypair]);
+          console.log(`✅ Dev buy tokens transferred to user wallet: ${transferSig}`);
+          console.log(`   Amount: ${tokenBalance.value.uiAmountString} tokens → ${tokenData.userWallet}`);
+        }
+      } catch (error) {
+        console.error('Error transferring dev buy tokens:', error.message);
+        // Don't fail the launch if token transfer fails
+      }
+    }
 
     // Send leftover funds to platform wallet (skip in mock mode)
     if (!MOCK_MODE) {
