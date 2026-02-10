@@ -144,7 +144,7 @@ app.post('/api/launch/prepare', async (req, res) => {
         description: description || '',
         twitter: '',
         telegram: '',
-        website: `${req.protocol}://${req.get('host')}/thread/${tokenMint}`,
+        website: '', // Empty for now - will add shitcointalk.fun link later
         showName: 'true'
       };
 
