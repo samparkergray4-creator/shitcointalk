@@ -115,7 +115,7 @@ function fileToBase64(file) {
 // Sorting and filtering state
 let currentThreads = [];
 let filteredThreads = [];
-let sortColumn = 'replies'; // Default sort by replies
+let sortColumn = 'date'; // Default sort by most recent
 let sortDirection = 'desc';
 let searchQuery = '';
 
@@ -198,6 +198,10 @@ function sortThreadsData() {
         aVal = a.commentCount || 0;
         bVal = b.commentCount || 0;
         break;
+      case 'date':
+        aVal = a.createdAt?._seconds || 0;
+        bVal = b.createdAt?._seconds || 0;
+        break;
       default:
         return 0;
     }
@@ -210,7 +214,7 @@ function sortThreadsData() {
   });
 
   // Update sort indicators
-  ['mc', 'volume', 'replies'].forEach(col => {
+  ['mc', 'volume', 'replies', 'date'].forEach(col => {
     const indicator = document.getElementById(`sort-${col}`);
     if (indicator) {
       if (col === sortColumn) {
