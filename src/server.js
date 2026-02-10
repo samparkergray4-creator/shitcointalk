@@ -710,46 +710,88 @@ app.get('/api/image/:hash', async (req, res) => {
   }
 });
 
-// Get coin data - tries pump.fun first, then DexScreener
+// Read pump.fun bonding curve data directly from on-chain
+const PUMP_FUN_PROGRAM = new PublicKey('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
+
+async function getPumpFunBondingCurve(mintAddress) {
+  try {
+    const mintPubkey = new PublicKey(mintAddress);
+
+    // Derive bonding curve PDA
+    const [bondingCurve] = PublicKey.findProgramAddressSync(
+      [Buffer.from('bonding-curve'), mintPubkey.toBuffer()],
+      PUMP_FUN_PROGRAM
+    );
+
+    const accountInfo = await connection.getAccountInfo(bondingCurve);
+    if (!accountInfo || !accountInfo.data) return null;
+
+    const data = accountInfo.data;
+
+    // Parse bonding curve account (after 8-byte discriminator)
+    const virtualTokenReserves = data.readBigUInt64LE(8);
+    const virtualSolReserves = data.readBigUInt64LE(16);
+    const realTokenReserves = data.readBigUInt64LE(24);
+    const realSolReserves = data.readBigUInt64LE(32);
+    const tokenTotalSupply = data.readBigUInt64LE(40);
+    const complete = data[48] === 1; // Token has graduated to Raydium
+
+    // Calculate price: SOL per token
+    const priceInSol = Number(virtualSolReserves) / Number(virtualTokenReserves);
+
+    // Get SOL price in USD
+    let solPriceUsd = 0;
+    try {
+      const solRes = await fetch('https://api.dexscreener.com/latest/dex/tokens/So11111111111111111111111111111111111111112');
+      if (solRes.ok) {
+        const solData = await solRes.json();
+        if (solData.pairs && solData.pairs.length > 0) {
+          solPriceUsd = parseFloat(solData.pairs[0].priceUsd || 0);
+        }
+      }
+    } catch (e) {
+      solPriceUsd = 84; // Fallback SOL price estimate
+    }
+
+    const priceUsd = priceInSol * solPriceUsd;
+    const totalSupply = Number(tokenTotalSupply) / 1e6; // pump.fun tokens have 6 decimals
+    const marketCap = priceUsd * totalSupply;
+
+    return {
+      marketCap,
+      priceUsd,
+      priceInSol,
+      virtualSolReserves: Number(virtualSolReserves) / LAMPORTS_PER_SOL,
+      realSolReserves: Number(realSolReserves) / LAMPORTS_PER_SOL,
+      complete
+    };
+  } catch (error) {
+    console.error('Error reading bonding curve:', error.message);
+    return null;
+  }
+}
+
+// Get coin data - reads on-chain bonding curve, falls back to DexScreener
 app.get('/api/coin/:mint', async (req, res) => {
   try {
     const { mint } = req.params;
 
     let marketData = null;
 
-    // Try pump.fun API first (for bonding curve tokens)
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-
-      const pumpResponse = await fetch(`https://frontend-api.pump.fun/coins/${mint}`, {
-        signal: controller.signal,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'application/json',
-          'Referer': 'https://pump.fun/'
-        }
-      });
-      clearTimeout(timeout);
-
-      if (pumpResponse.ok) {
-        const pumpData = await pumpResponse.json();
-        if (pumpData.usd_market_cap) {
-          marketData = {
-            marketCap: pumpData.usd_market_cap || 0,
-            volume24h: pumpData.volume_24h || 0,
-            priceUsd: pumpData.price || 0,
-            holders: pumpData.holder_count || 0
-          };
-          console.log(`pump.fun data: MC=$${marketData.marketCap.toFixed(0)}, Holders=${marketData.holders}`);
-        }
-      }
-    } catch (error) {
-      console.log(`pump.fun API failed: ${error.message}`);
+    // Try reading on-chain bonding curve data
+    const bondingData = await getPumpFunBondingCurve(mint);
+    if (bondingData && bondingData.marketCap > 0) {
+      marketData = {
+        marketCap: bondingData.marketCap,
+        volume24h: 0,
+        priceUsd: bondingData.priceUsd,
+        holders: 0,
+        graduated: bondingData.complete
+      };
     }
 
-    // Fallback to DexScreener (for graduated tokens on Raydium)
-    if (!marketData) {
+    // If graduated or no bonding curve, try DexScreener
+    if (!marketData || bondingData?.complete) {
       try {
         const dexResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`);
         if (dexResponse.ok) {
@@ -760,13 +802,13 @@ app.get('/api/coin/:mint', async (req, res) => {
               marketCap: parseFloat(pair.fdv || pair.marketCap || 0),
               volume24h: parseFloat(pair.volume?.h24 || 0),
               priceUsd: parseFloat(pair.priceUsd || 0),
-              holders: 0
+              holders: 0,
+              graduated: true
             };
-            console.log(`DexScreener data: MC=$${marketData.marketCap.toFixed(0)}`);
           }
         }
       } catch (error) {
-        console.log(`DexScreener API failed: ${error.message}`);
+        // DexScreener failed
       }
     }
 
@@ -790,6 +832,7 @@ app.get('/api/coin/:mint', async (req, res) => {
       volume24h: marketData?.volume24h || 0,
       priceUsd: marketData?.priceUsd || 0,
       holders: marketData?.holders || 0,
+      graduated: marketData?.graduated || false,
       createdAt: thread.createdAt?._seconds || thread.createdAt
     });
   } catch (error) {
