@@ -245,23 +245,57 @@ function clearStatus(elementId) {
   if (el) el.innerHTML = '';
 }
 
-// Auto-refresh stats every 10 seconds
-setInterval(async () => {
+// Fetch live stats from pump.fun (client-side) and DexScreener
+async function refreshStats() {
   try {
-    const response = await fetch(`/api/coin/${mint}`);
-    if (response.ok) {
-      const coin = await response.json();
-      document.getElementById('statMC').textContent = coin.marketCap
-        ? `$${formatNumber(coin.marketCap)}`
-        : '—';
-      document.getElementById('statVolume').textContent = coin.volume24h
-        ? `$${formatNumber(coin.volume24h)}`
-        : '—';
-      document.getElementById('statHolders').textContent = coin.holders || '0';
+    let marketCap = 0;
+    let volume = 0;
+    let holders = 0;
+
+    // Try pump.fun API directly from browser
+    try {
+      const pumpRes = await fetch(`https://frontend-api.pump.fun/coins/${mint}`);
+      if (pumpRes.ok) {
+        const pumpData = await pumpRes.json();
+        marketCap = pumpData.usd_market_cap || 0;
+        holders = pumpData.holder_count || 0;
+      }
+    } catch (e) {
+      // pump.fun failed
     }
+
+    // If pump.fun didn't have data, try DexScreener
+    if (!marketCap) {
+      try {
+        const dexRes = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`);
+        if (dexRes.ok) {
+          const dexData = await dexRes.json();
+          if (dexData.pairs && dexData.pairs.length > 0) {
+            const pair = dexData.pairs[0];
+            marketCap = parseFloat(pair.fdv || pair.marketCap || 0);
+            volume = parseFloat(pair.volume?.h24 || 0);
+          }
+        }
+      } catch (e) {
+        // DexScreener also failed
+      }
+    }
+
+    document.getElementById('statMC').textContent = marketCap
+      ? `$${formatNumber(marketCap)}`
+      : '—';
+    document.getElementById('statVolume').textContent = volume
+      ? `$${formatNumber(volume)}`
+      : '—';
+    document.getElementById('statHolders').textContent = holders || '0';
   } catch (error) {
     console.error('Error refreshing stats:', error);
   }
-}, 10000);
+}
+
+// Auto-refresh stats every 10 seconds
+setInterval(refreshStats, 10000);
+// Also fetch immediately
+refreshStats();
 
 loadThread();

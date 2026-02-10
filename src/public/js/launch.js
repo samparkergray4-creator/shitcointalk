@@ -238,24 +238,51 @@ function sortThreadsData() {
   });
 }
 
-// Fetch and update coin stats from pump.fun
+// Fetch and update coin stats - tries pump.fun first (for bonding curve tokens), then DexScreener
 async function updateCoinStats(mint) {
   try {
-    const response = await fetch(`/api/coin/${mint}`);
-    if (!response.ok) return;
+    let marketCap = 0;
+    let volume = 0;
 
-    const coin = await response.json();
+    // Try pump.fun API directly from browser (server gets blocked by Cloudflare)
+    try {
+      const pumpRes = await fetch(`https://frontend-api.pump.fun/coins/${mint}`);
+      if (pumpRes.ok) {
+        const pumpData = await pumpRes.json();
+        marketCap = pumpData.usd_market_cap || 0;
+        volume = pumpData.total_supply ? marketCap * 0.1 : 0; // Estimate if no volume field
+      }
+    } catch (e) {
+      // pump.fun API failed, try DexScreener
+    }
+
+    // If pump.fun didn't have data, try DexScreener (for graduated tokens on Raydium)
+    if (!marketCap) {
+      try {
+        const dexRes = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`);
+        if (dexRes.ok) {
+          const dexData = await dexRes.json();
+          if (dexData.pairs && dexData.pairs.length > 0) {
+            const pair = dexData.pairs[0];
+            marketCap = parseFloat(pair.fdv || pair.marketCap || 0);
+            volume = parseFloat(pair.volume?.h24 || 0);
+          }
+        }
+      } catch (e) {
+        // DexScreener also failed
+      }
+    }
 
     // Update market cap
     const mcEl = document.getElementById(`mc-${mint}`);
-    if (mcEl && coin.marketCap) {
-      mcEl.textContent = '$' + formatNumber(coin.marketCap);
+    if (mcEl && marketCap) {
+      mcEl.textContent = '$' + formatNumber(marketCap);
     }
 
     // Update volume
     const volEl = document.getElementById(`vol-${mint}`);
-    if (volEl && coin.volume24h) {
-      volEl.textContent = '$' + formatNumber(coin.volume24h);
+    if (volEl && volume) {
+      volEl.textContent = '$' + formatNumber(volume);
     }
   } catch (error) {
     console.error('Error fetching stats for', mint, error);
