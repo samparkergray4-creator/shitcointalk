@@ -265,20 +265,28 @@ app.post('/api/launch/create', async (req, res) => {
     transaction.feePayer = userPubkey;
 
     // Don't serialize - send as JSON to avoid corruption
+    const txData = {
+      recentBlockhash: blockhash,
+      feePayer: userPubkey.toString(),
+      instructions: [{
+        programId: SystemProgram.programId.toString(),
+        keys: [
+          { pubkey: userPubkey.toString(), isSigner: true, isWritable: true },
+          { pubkey: creatorPubkey.toString(), isSigner: false, isWritable: true }
+        ],
+        data: transaction.instructions[0].data
+      }]
+    };
+
+    console.log('Sending transaction data:');
+    console.log('  User wallet (FROM):', userPubkey.toString());
+    console.log('  Creator wallet (TO):', creatorPubkey.toString());
+    console.log('  Instruction keys[0]:', txData.instructions[0].keys[0].pubkey);
+    console.log('  Instruction keys[1]:', txData.instructions[0].keys[1].pubkey);
+
     res.json({
       success: true,
-      transactionData: {
-        recentBlockhash: blockhash,
-        feePayer: userPubkey.toString(),
-        instructions: [{
-          programId: SystemProgram.programId.toString(),
-          keys: [
-            { pubkey: userPubkey.toString(), isSigner: true, isWritable: true },
-            { pubkey: creatorPubkey.toString(), isSigner: false, isWritable: true }
-          ],
-          data: transaction.instructions[0].data
-        }]
-      },
+      transactionData: txData,
       tokenMint,
       creatorWallet: tokenData.creatorWallet,
       message: 'Approve the transaction in your wallet'

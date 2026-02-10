@@ -24,6 +24,10 @@ async function signTransaction(transactionData) {
       throw new Error('Wallet not connected');
     }
 
+    console.log('Received transaction data:');
+    console.log('  feePayer:', transactionData.feePayer);
+    console.log('  Instruction keys received:', transactionData.instructions[0].keys);
+
     // Rebuild transaction from JSON data (avoids serialization corruption)
     const transaction = new solanaWeb3.Transaction();
     transaction.recentBlockhash = transactionData.recentBlockhash;
