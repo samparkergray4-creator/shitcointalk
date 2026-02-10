@@ -193,19 +193,39 @@ app.post('/api/launch/prepare', async (req, res) => {
       console.log('IPFS metadata uploaded:', metadataUri);
 
       // Fetch the metadata to get the actual image URL
-      try {
-        const metadataResponse = await fetch(metadataUri.replace('ipfs://', 'https://ipfs.io/ipfs/'));
-        if (metadataResponse.ok) {
-          const metadata = await metadataResponse.json();
-          imageUrl = metadata.image; // Extract actual image URL from metadata
-          console.log('✅ Image URL extracted from metadata:', imageUrl);
-        } else {
-          imageUrl = metadataUri; // Fallback to metadata URI if fetch fails
-          console.log('⚠️  Could not fetch metadata, using metadata URI as fallback');
+      // Try multiple gateways since content might not have propagated yet
+      const ipfsHash = metadataUri.replace('ipfs://', '');
+      const metadataGateways = [
+        `https://gateway.pinata.cloud/ipfs/${ipfsHash}`,
+        `https://cloudflare-ipfs.com/ipfs/${ipfsHash}`,
+        `https://ipfs.io/ipfs/${ipfsHash}`
+      ];
+
+      let metadataFetched = false;
+      for (const gateway of metadataGateways) {
+        try {
+          console.log(`Attempting to fetch metadata from ${gateway}...`);
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 10000); // 10 sec timeout
+
+          const metadataResponse = await fetch(gateway, { signal: controller.signal });
+          clearTimeout(timeout);
+
+          if (metadataResponse.ok) {
+            const metadata = await metadataResponse.json();
+            imageUrl = metadata.image; // Extract actual image URL from metadata
+            console.log('✅ Image URL extracted from metadata:', imageUrl);
+            metadataFetched = true;
+            break;
+          }
+        } catch (error) {
+          console.log(`   Gateway failed: ${error.message}`);
         }
-      } catch (error) {
-        imageUrl = metadataUri; // Fallback
-        console.log('⚠️  Error fetching metadata:', error.message);
+      }
+
+      if (!metadataFetched) {
+        imageUrl = metadataUri; // Fallback to metadata URI
+        console.log('⚠️  All gateways failed, using metadata URI as fallback');
       }
     }
 
