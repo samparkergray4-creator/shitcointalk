@@ -39,7 +39,7 @@ async function signTransaction(transactionData) {
           isWritable: k.isWritable
         })),
         programId: new solanaWeb3.PublicKey(instruction.programId),
-        data: Buffer.from(instruction.data)
+        data: new Uint8Array(Object.values(instruction.data))
       })
     );
 
