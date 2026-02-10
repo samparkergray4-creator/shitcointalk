@@ -414,11 +414,14 @@ app.post('/api/launch/confirm', async (req, res) => {
 
         // Get remaining balance
         const balance = await connection.getBalance(creatorKeypair.publicKey);
+        console.log(`Creator wallet balance after token creation: ${balance / LAMPORTS_PER_SOL} SOL`);
 
-        // Keep a small amount for rent (5000 lamports)
-        const amountToSend = balance - 5000;
+        // Reserve 0.001 SOL (1000000 lamports) for rent + transaction fee
+        const reserveAmount = 1000000;
+        const amountToSend = balance - reserveAmount;
 
-        if (amountToSend > 0) {
+        // Only send if there's a meaningful amount left (at least 0.001 SOL)
+        if (amountToSend > 1000000) {
           const withdrawTx = new Transaction().add(
             SystemProgram.transfer({
               fromPubkey: creatorKeypair.publicKey,
@@ -432,10 +435,12 @@ app.post('/api/launch/confirm', async (req, res) => {
           withdrawTx.feePayer = creatorKeypair.publicKey;
 
           const withdrawSig = await connection.sendTransaction(withdrawTx, [creatorKeypair]);
-          console.log(`Platform fee collected: ${amountToSend / LAMPORTS_PER_SOL} SOL (TX: ${withdrawSig})`);
+          console.log(`✅ Platform fee collected: ${amountToSend / LAMPORTS_PER_SOL} SOL (TX: ${withdrawSig})`);
+        } else {
+          console.log(`⚠️  Insufficient balance for platform fee collection. Balance: ${balance / LAMPORTS_PER_SOL} SOL`);
         }
       } catch (error) {
-        console.error('Error collecting platform fee:', error);
+        console.error('Error collecting platform fee:', error.message);
         // Don't fail the entire operation if fee collection fails
       }
     }
