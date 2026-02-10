@@ -324,8 +324,16 @@ app.post('/api/launch/confirm', async (req, res) => {
       const creatorKeypair = Keypair.fromSecretKey(bs58.decode(tokenData.creatorPrivateKey));
       const balance = await connection.getBalance(creatorKeypair.publicKey);
 
+      console.log(`Creator wallet: ${creatorKeypair.publicKey.toString()}`);
+      console.log(`Balance: ${balance / LAMPORTS_PER_SOL} SOL`);
+      console.log(`Required: 0.01 SOL`);
+      console.log(`Transaction signature: ${signature}`);
+
       if (balance < 0.01 * LAMPORTS_PER_SOL) {
-        return res.status(400).json({ success: false, error: 'Payment not received - please try again' });
+        return res.status(400).json({
+          success: false,
+          error: `Payment not received. Balance: ${(balance / LAMPORTS_PER_SOL).toFixed(4)} SOL. Check transaction: https://solscan.io/tx/${signature}`
+        });
       }
 
       // Create token via PumpPortal
