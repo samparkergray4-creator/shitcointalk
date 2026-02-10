@@ -11,6 +11,7 @@ document.getElementById('launchForm').addEventListener('submit', async (e) => {
     // Step 0: Connect Phantom wallet
     showStatus('statusMsg', 'Connecting to Phantom wallet...', 'info');
     const wallet = await connectWallet();
+    console.log('Connected wallet address:', wallet);
     showStatus('statusMsg', `✅ Connected: ${wallet.substring(0, 4)}...${wallet.substring(wallet.length - 4)}`, 'success');
     await new Promise(resolve => setTimeout(resolve, 1000));
 
