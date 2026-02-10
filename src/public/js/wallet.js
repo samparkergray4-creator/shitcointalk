@@ -28,8 +28,17 @@ async function signTransaction(transactionBase64) {
     const transactionBuffer = Uint8Array.from(atob(transactionBase64), c => c.charCodeAt(0));
     const transaction = solanaWeb3.Transaction.from(transactionBuffer);
 
-    // Sign and send transaction through Phantom
-    const { signature } = await window.solana.signAndSendTransaction(transaction);
+    console.log('Transaction to sign:', transaction);
+    console.log('Instructions:', transaction.instructions);
+
+    // Sign transaction with Phantom (but don't send yet)
+    const signedTransaction = await window.solana.signTransaction(transaction);
+
+    console.log('Transaction signed, now sending...');
+
+    // Create connection and send the signed transaction ourselves
+    const connection = new solanaWeb3.Connection('https://api.mainnet-beta.solana.com');
+    const signature = await connection.sendRawTransaction(signedTransaction.serialize());
 
     console.log('Transaction sent:', signature);
     return signature;
