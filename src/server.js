@@ -194,7 +194,12 @@ app.post('/api/launch/prepare', async (req, res) => {
 
       // Fetch the metadata to get the actual image URL
       // Try multiple gateways since content might not have propagated yet
-      const ipfsHash = metadataUri.replace('ipfs://', '');
+      let ipfsHash = metadataUri;
+      // Strip any gateway prefix to get just the hash
+      ipfsHash = ipfsHash.replace('ipfs://', '');
+      ipfsHash = ipfsHash.replace('https://ipfs.io/ipfs/', '');
+      ipfsHash = ipfsHash.replace('https://cloudflare-ipfs.com/ipfs/', '');
+      ipfsHash = ipfsHash.replace('https://gateway.pinata.cloud/ipfs/', '');
       const metadataGateways = [
         `https://gateway.pinata.cloud/ipfs/${ipfsHash}`,
         `https://cloudflare-ipfs.com/ipfs/${ipfsHash}`,
