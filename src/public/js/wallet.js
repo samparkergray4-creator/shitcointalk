@@ -24,11 +24,13 @@ async function signTransaction(transactionBase64) {
       throw new Error('Wallet not connected');
     }
 
-    const transaction = window.solana.constructor.Transaction.from(
-      Buffer.from(transactionBase64, 'base64')
-    );
+    // Decode base64 transaction using web3.js
+    const transactionBuffer = Uint8Array.from(atob(transactionBase64), c => c.charCodeAt(0));
+    const transaction = solanaWeb3.Transaction.from(transactionBuffer);
 
+    // Sign and send transaction through Phantom
     const { signature } = await window.solana.signAndSendTransaction(transaction);
+
     console.log('Transaction sent:', signature);
     return signature;
   } catch (error) {
