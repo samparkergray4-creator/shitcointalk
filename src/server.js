@@ -190,8 +190,23 @@ app.post('/api/launch/prepare', async (req, res) => {
 
       const ipfsData = await ipfsResponse.json();
       metadataUri = ipfsData.metadataUri;
-      imageUrl = metadataUri;
-      console.log('IPFS upload successful:', metadataUri);
+      console.log('IPFS metadata uploaded:', metadataUri);
+
+      // Fetch the metadata to get the actual image URL
+      try {
+        const metadataResponse = await fetch(metadataUri.replace('ipfs://', 'https://ipfs.io/ipfs/'));
+        if (metadataResponse.ok) {
+          const metadata = await metadataResponse.json();
+          imageUrl = metadata.image; // Extract actual image URL from metadata
+          console.log('✅ Image URL extracted from metadata:', imageUrl);
+        } else {
+          imageUrl = metadataUri; // Fallback to metadata URI if fetch fails
+          console.log('⚠️  Could not fetch metadata, using metadata URI as fallback');
+        }
+      } catch (error) {
+        imageUrl = metadataUri; // Fallback
+        console.log('⚠️  Error fetching metadata:', error.message);
+      }
     }
 
     // Store in temporary cache (will be replaced by Firebase later)
