@@ -67,6 +67,7 @@ export async function storeCreatorKey(mint, creatorPrivateKeyBs58, userWallet) {
 // ===== AUTO-CLAIM TIMER =====
 
 let claimTimer = null;
+let claimRunning = false;
 
 export function startFeeClaimTimer(connection) {
   const MOCK_MODE = process.env.MOCK_MODE === 'true';
@@ -92,12 +93,18 @@ export function startFeeClaimTimer(connection) {
 }
 
 async function claimAllFees(connection) {
+  if (claimRunning) {
+    console.log('Fee claim cycle already running, skipping');
+    return;
+  }
+  claimRunning = true;
+
   const secret = process.env.CREATOR_KEY_SECRET;
   const platformKey = process.env.PLATFORM_PRIVATE_KEY;
-  if (!secret || !platformKey) return;
+  if (!secret || !platformKey) { claimRunning = false; return; }
 
   const db = getDb();
-  if (!db) return;
+  if (!db) { claimRunning = false; return; }
 
   try {
     // Check platform wallet balance
@@ -134,6 +141,8 @@ async function claimAllFees(connection) {
     console.log('Fee claim cycle complete');
   } catch (err) {
     console.error('Fee claim cycle error:', err.message);
+  } finally {
+    claimRunning = false;
   }
 }
 
@@ -166,12 +175,12 @@ async function claimSingleFee(connection, mint, data, secret, platformKeypair) {
     return;
   }
 
-  // 4. Fund creator wallet with ~5000 lamports for tx fee
+  // 4. Fund creator wallet with lamports for claim + transfer tx fees
   const fundingTx = new Transaction().add(
     SystemProgram.transfer({
       fromPubkey: platformKeypair.publicKey,
       toPubkey: creatorKeypair.publicKey,
-      lamports: 5000
+      lamports: 15000
     })
   );
 
@@ -183,25 +192,28 @@ async function claimSingleFee(connection, mint, data, secret, platformKeypair) {
   await connection.confirmTransaction(fundingSig, 'confirmed');
 
   // 5. Deserialize, sign, and send the claim tx
-  let claimTx;
+  let claimSig;
   try {
-    claimTx = VersionedTransaction.deserialize(new Uint8Array(txData));
+    const claimTx = VersionedTransaction.deserialize(new Uint8Array(txData));
     claimTx.sign([creatorKeypair]);
+    claimSig = await connection.sendTransaction(claimTx, {
+      skipPreflight: false,
+      maxRetries: 3
+    });
   } catch {
     // Fallback to legacy transaction
-    claimTx = Transaction.from(Buffer.from(txData));
+    const claimTx = Transaction.from(Buffer.from(txData));
     claimTx.sign(creatorKeypair);
+    claimSig = await connection.sendRawTransaction(claimTx.serialize(), {
+      skipPreflight: false,
+      maxRetries: 3
+    });
   }
-
-  const claimSig = await connection.sendTransaction(claimTx, {
-    skipPreflight: false,
-    maxRetries: 3
-  });
   await connection.confirmTransaction(claimSig, 'confirmed');
 
   // 6. Check creator wallet balance
   const creatorBalance = await connection.getBalance(creatorKeypair.publicKey);
-  const transferAmount = creatorBalance - 1000; // Keep 1000 lamport reserve
+  const transferAmount = creatorBalance - 6000; // Reserve 5000 for tx fee + 1000 buffer
 
   if (transferAmount <= 0) {
     console.log(`No SOL to forward for ${mint} (balance: ${creatorBalance} lamports)`);
