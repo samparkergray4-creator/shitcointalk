@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dev Logs - shitcoin forum</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="stylesheet" href="/css/bitcointalk.css">
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div id="header_area">
+  <div class="tborder">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td class="catbg" height="32">
+          <span style="font-family: Verdana, sans-serif; font-size: 140%;">shitcoin forum</span>
+        </td>
+        <td align="right" class="catbg" style="font-family: Verdana, sans-serif; font-size: 10px; color: #d3dce3; padding-right: 8px;">
+          <span style="font-weight: bold;">Community:</span>
+          <code id="headerMint" style="font-size: 9px; cursor: pointer; margin: 0 4px;" onclick="copyCommunityMint()" title="Click to copy">MINT_ADDRESS_HERE</code>
+          <button onclick="copyCommunityMint()" style="font-size: 9px; padding: 1px 6px; cursor: pointer; background: #d3dce3; border: 1px solid #999; border-radius: 2px;">Copy</button>
+          <span id="headerCopyStatus" style="color: #8f8; font-size: 9px;"></span>
+          &nbsp;|&nbsp;
+          <a href="https://x.com/TWITTER_HANDLE_HERE" target="_blank" style="color: #d3dce3; font-weight: bold;">Follow on X</a>
+        </td>
+      </tr>
+    </table>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td class="titlebg2" height="32" align="right">
+          <span class="smalltext" id="currentDate"></span>
+        </td>
+      </tr>
+      <tr>
+        <td valign="top" colspan="2">
+          <table width="100%" class="bordercolor" cellpadding="8" cellspacing="1" border="0" style="margin-top: 1px;">
+            <tr>
+              <td colspan="2" width="100%" valign="top" class="windowbg2">
+                <span class="middletext"><a href="/" class="nav">shitcoin forum</a> &gt; <b>Dev Logs</b></span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+    <table width="100%" cellpadding="4" cellspacing="0" border="0">
+      <tr>
+        <td width="90%" class="titlebg2">
+          <span class="smalltext"><b>News:</b> BitcoinTalk coins are for boomers, get with the times and launch your own ShitcoinTalk coin.</span>
+        </td>
+        <td class="titlebg2" align="right" nowrap="nowrap" valign="top">
+          <input type="text" id="searchInput" placeholder="Search coins..." style="width: 190px;" onkeypress="if(event.key==='Enter'){window.location.href='/#coins?search='+encodeURIComponent(this.value);}" />&nbsp;
+          <button onclick="window.location.href='/#coins?search='+encodeURIComponent(document.getElementById('searchInput').value);" style="width: 11ex; cursor: pointer;">Search</button>
+        </td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ===== NAVIGATION TABS ===== -->
+<table cellpadding="0" cellspacing="0" border="0" style="margin-left: 10px;">
+  <tr>
+    <td class="maintab_first">&nbsp;</td>
+    <td valign="top" class="maintab_back"><a href="/">Home</a></td>
+    <td valign="top" class="maintab_back"><a href="/#launch">Launch</a></td>
+    <td valign="top" class="maintab_back"><a href="/#coins">Coins</a></td>
+    <td class="maintab_active_first">&nbsp;</td>
+    <td valign="top" class="maintab_active_back"><a href="/devlogs">Dev Logs</a></td>
+    <td class="maintab_active_last">&nbsp;</td>
+    <td class="maintab_last">&nbsp;</td>
+  </tr>
+</table>
+
+<!-- ===== BREADCRUMB ===== -->
+<div style="padding: 1ex 0px 2ex 0px;">
+  <div class="nav" style="font-size: smaller; margin-bottom: 2ex; margin-top: 2ex;">
+    <b><a href="/" class="nav">shitcoin forum</a></b> &gt;
+    <b>Dev Logs</b>
+  </div>
+</div>
+
+<!-- ===== DEV LOGS LIST ===== -->
+<div class="tborder">
+  <table class="bordercolor board_table" cellspacing="1" cellpadding="4" width="100%">
+    <tr class="catbg">
+      <td><b>Dev Logs &amp; Announcements</b></td>
+    </tr>
+  </table>
+
+  <div id="devLogsList">
+    <table class="bordercolor post_table" cellspacing="1" cellpadding="4" width="100%">
+      <tr>
+        <td class="windowbg" style="text-align: center; padding: 20px; color: #666;">
+          <div style="font-size: 12px;">Loading dev logs...</div>
+        </td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ===== ADMIN POST FORM (hidden by default) ===== -->
+<div id="adminForm" style="display: none;">
+  <div class="form_section" style="margin-top: 8px;">
+    <div class="section_title">Post a Dev Log (Admin)</div>
+    <div class="form_inner">
+      <div id="adminStatus"></div>
+      <form id="devLogForm">
+        <div class="form_row">
+          <label for="logTitle">Title</label>
+          <input type="text" id="logTitle" name="logTitle" required placeholder="Update title...">
+        </div>
+        <div class="form_row">
+          <label for="logContent">Content</label>
+          <textarea id="logContent" name="logContent" required rows="8" placeholder="Write your update..." style="font-size: 12px;"></textarea>
+        </div>
+        <div class="form_row">
+          <button type="submit" class="button_submit">Post Dev Log</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FOOTER ===== -->
+<div id="footer">
+  Powered by PumpFun and God
+  <div style="margin-top: 6px; font-family: Verdana, sans-serif; font-size: 10px;">
+    <span style="font-weight: bold;">Community:</span>
+    <code id="footerMint" style="font-size: 9px; cursor: pointer;" onclick="copyCommunityMint()" title="Click to copy">MINT_ADDRESS_HERE</code>
+    <button onclick="copyCommunityMint()" style="font-size: 9px; padding: 1px 6px; cursor: pointer; background: #d3dce3; border: 1px solid #999; border-radius: 2px;">Copy</button>
+    <span id="footerCopyStatus" style="color: #080; font-size: 9px;"></span>
+    &nbsp;|&nbsp;
+    <a href="https://x.com/TWITTER_HANDLE_HERE" target="_blank" style="font-weight: bold;">Follow on X</a>
+  </div>
+</div>
+
+<script>
+  function copyCommunityMint() {
+    var mint = document.getElementById('headerMint').textContent;
+    navigator.clipboard.writeText(mint).then(function() {
+      var hs = document.getElementById('headerCopyStatus');
+      var fs = document.getElementById('footerCopyStatus');
+      if (hs) hs.textContent = 'Copied!';
+      if (fs) fs.textContent = 'Copied!';
+      setTimeout(function() { if (hs) hs.textContent = ''; if (fs) fs.textContent = ''; }, 2000);
+    });
+  }
+
+  function updateDate() {
+    var now = new Date();
+    var options = { year: 'numeric', month: 'long', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+    document.getElementById('currentDate').textContent = now.toLocaleString('en-US', options);
+  }
+  updateDate();
+  setInterval(updateDate, 1000);
+
+  // Get admin secret from URL param
+  var params = new URLSearchParams(window.location.search);
+  var adminSecret = params.get('admin');
+
+  if (adminSecret) {
+    document.getElementById('adminForm').style.display = 'block';
+  }
+
+  function formatDate(ts) {
+    if (!ts) return 'Unknown date';
+    var d = ts._seconds ? new Date(ts._seconds * 1000) : new Date(ts);
+    var options = { year: 'numeric', month: 'long', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true };
+    return d.toLocaleString('en-US', options);
+  }
+
+  function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // Load dev logs
+  function loadDevLogs() {
+    fetch('/api/dev-logs')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        var container = document.getElementById('devLogsList');
+
+        if (!data.success || !data.logs || data.logs.length === 0) {
+          container.innerHTML =
+            '<table class="bordercolor post_table" cellspacing="1" cellpadding="4" width="100%">' +
+              '<tr><td class="windowbg" style="text-align: center; padding: 20px; color: #666;">' +
+                '<div style="font-size: 12px;">No dev logs yet.</div>' +
+              '</td></tr>' +
+            '</table>';
+          return;
+        }
+
+        var html = '';
+        data.logs.forEach(function(log) {
+          html +=
+            '<table class="bordercolor post_table" cellspacing="1" cellpadding="4" width="100%" style="margin-top: 1px;">' +
+              '<tr>' +
+                '<td class="titlebg" colspan="2">' +
+                  '<span>' + formatDate(log.createdAt) + '</span>' +
+                '</td>' +
+              '</tr>' +
+              '<tr>' +
+                '<td class="post_author windowbg" valign="top" style="width: 160px;">' +
+                  '<div class="poster_name"><a>Admin</a></div>' +
+                  '<div class="poster_rank">Site Developer</div>' +
+                  '<div class="poster_info">Activity: N/A<br>Merit: 999</div>' +
+                '</td>' +
+                '<td class="post_body windowbg" valign="top">' +
+                  '<h3 style="font-size: 14px; font-weight: bold; margin: 0 0 10px 0; color: #2e4453;">' + escapeHtml(log.title) + '</h3>' +
+                  '<div style="font-size: 13px; line-height: 1.6; white-space: pre-wrap;">' + escapeHtml(log.content) + '</div>' +
+                  (adminSecret ?
+                    '<div style="margin-top: 12px; text-align: right;">' +
+                      '<button onclick="deleteLog(\'' + log.id + '\')" style="padding: 3px 10px; font-size: 10px; cursor: pointer; background: #d3dce3; border: 1px solid #999; border-radius: 3px; color: #900;">Delete</button>' +
+                    '</div>' : '') +
+                '</td>' +
+              '</tr>' +
+            '</table>';
+        });
+
+        container.innerHTML = html;
+      })
+      .catch(function(err) {
+        console.error('Error loading dev logs:', err);
+        document.getElementById('devLogsList').innerHTML =
+          '<table class="bordercolor post_table" cellspacing="1" cellpadding="4" width="100%">' +
+            '<tr><td class="windowbg" style="text-align: center; padding: 20px; color: #900;">' +
+              '<div style="font-size: 12px;">Failed to load dev logs.</div>' +
+            '</td></tr>' +
+          '</table>';
+      });
+  }
+
+  loadDevLogs();
+
+  // Admin: Post a dev log
+  document.getElementById('devLogForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    var title = document.getElementById('logTitle').value.trim();
+    var content = document.getElementById('logContent').value.trim();
+    var statusEl = document.getElementById('adminStatus');
+
+    if (!title || !content) {
+      statusEl.innerHTML = '<div style="color: #900; padding: 6px;">Title and content are required.</div>';
+      return;
+    }
+
+    statusEl.innerHTML = '<div style="color: #555; padding: 6px;">Posting...</div>';
+
+    fetch('/api/dev-logs', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-secret': adminSecret
+      },
+      body: JSON.stringify({ title: title, content: content })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.success) {
+        statusEl.innerHTML = '<div style="color: #080; padding: 6px;">Dev log posted!</div>';
+        document.getElementById('logTitle').value = '';
+        document.getElementById('logContent').value = '';
+        loadDevLogs();
+        setTimeout(function() { statusEl.innerHTML = ''; }, 3000);
+      } else {
+        statusEl.innerHTML = '<div style="color: #900; padding: 6px;">Error: ' + escapeHtml(data.error) + '</div>';
+      }
+    })
+    .catch(function(err) {
+      statusEl.innerHTML = '<div style="color: #900; padding: 6px;">Failed to post: ' + escapeHtml(err.message) + '</div>';
+    });
+  });
+
+  // Admin: Delete a dev log
+  function deleteLog(id) {
+    if (!confirm('Delete this dev log?')) return;
+
+    fetch('/api/dev-logs/' + id, {
+      method: 'DELETE',
+      headers: { 'x-admin-secret': adminSecret }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.success) {
+        loadDevLogs();
+      } else {
+        alert('Failed to delete: ' + data.error);
+      }
+    })
+    .catch(function(err) {
+      alert('Failed to delete: ' + err.message);
+    });
+  }
+</script>
+</body>
+</html>

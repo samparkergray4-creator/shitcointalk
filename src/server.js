@@ -9,7 +9,7 @@ import dotenv from 'dotenv';
 import { Connection, PublicKey, Keypair, VersionedTransaction, LAMPORTS_PER_SOL, SystemProgram, Transaction } from '@solana/web3.js';
 import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferInstruction, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import bs58 from 'bs58';
-import { initializeFirebase, createThreadForCoin, getComments, addComment, getThread, uploadImage, getAllThreads, getDb } from './firebase.js';
+import { initializeFirebase, createThreadForCoin, getComments, addComment, getThread, uploadImage, getAllThreads, getDb, addDevLog, getDevLogs, deleteDevLog } from './firebase.js';
 import { storeCreatorKey, startFeeClaimTimer, stopFeeClaimTimer } from './fee-claimer.js';
 
 dotenv.config();
@@ -981,11 +981,66 @@ app.post('/api/admin/add-thread', async (req, res) => {
   }
 });
 
+// ===== DEV LOGS API =====
+
+// Get all dev logs (public)
+app.get('/api/dev-logs', async (req, res) => {
+  try {
+    const logs = await getDevLogs(100);
+    res.json({ success: true, logs });
+  } catch (error) {
+    console.error('Error getting dev logs:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Create a dev log (admin only)
+app.post('/api/dev-logs', async (req, res) => {
+  try {
+    const secret = req.headers['x-admin-secret'];
+    if (!ADMIN_SECRET || secret !== ADMIN_SECRET) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { title, content } = req.body;
+    if (!title || !content) {
+      return res.status(400).json({ success: false, error: 'Missing title or content' });
+    }
+
+    const id = await addDevLog(title, content);
+    res.json({ success: true, id });
+  } catch (error) {
+    console.error('Error creating dev log:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete a dev log (admin only)
+app.delete('/api/dev-logs/:id', async (req, res) => {
+  try {
+    const secret = req.headers['x-admin-secret'];
+    if (!ADMIN_SECRET || secret !== ADMIN_SECRET) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    await deleteDevLog(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting dev log:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ===== ROUTES =====
 
 // Landing page
 app.get('/', (req, res) => {
   res.sendFile(join(__dirname, 'public', 'index.html'));
+});
+
+// Dev logs page
+app.get('/devlogs', (req, res) => {
+  res.sendFile(join(__dirname, 'public', 'devlogs.html'));
 });
 
 // Thread page

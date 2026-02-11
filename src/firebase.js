@@ -192,6 +192,52 @@ export async function getAllThreads(limit = 50) {
   }
 }
 
+// ===== DEV LOGS =====
+
+// Add a dev log entry
+export async function addDevLog(title, content) {
+  if (!db) {
+    throw new Error('Firebase not configured');
+  }
+
+  const docRef = await db.collection('dev_logs').add({
+    title,
+    content,
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  return docRef.id;
+}
+
+// Get dev logs ordered by newest first
+export async function getDevLogs(limit = 50) {
+  if (!db) return [];
+
+  try {
+    const snapshot = await db.collection('dev_logs')
+      .orderBy('createdAt', 'desc')
+      .limit(limit)
+      .get();
+
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error('Error getting dev logs:', error);
+    return [];
+  }
+}
+
+// Delete a dev log entry
+export async function deleteDevLog(id) {
+  if (!db) {
+    throw new Error('Firebase not configured');
+  }
+
+  await db.collection('dev_logs').doc(id).delete();
+}
+
 export function getDb() { return db; }
 
 export { db };
