@@ -4,6 +4,103 @@ const mint = window.location.pathname.split('/').pop();
 
 console.log('Loading thread for mint:', mint);
 
+// ===== CHART =====
+var priceChart = null;
+var chartPoints = [];
+
+async function loadChart() {
+  try {
+    const res = await fetch(`/api/coin/${mint}/chart`);
+    const data = await res.json();
+    if (data.success && data.points.length > 0) {
+      chartPoints = data.points;
+      renderChart();
+    }
+  } catch (e) {
+    console.error('Error loading chart:', e);
+  }
+}
+
+function renderChart() {
+  var placeholder = document.getElementById('chartPlaceholder');
+  if (chartPoints.length === 0) {
+    if (placeholder) placeholder.style.display = '';
+    return;
+  }
+  if (placeholder) placeholder.style.display = 'none';
+
+  var ctx = document.getElementById('priceChart');
+  if (!ctx) return;
+
+  var labels = chartPoints.map(function(p) {
+    var d = new Date(p.t);
+    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+  });
+  var values = chartPoints.map(function(p) { return p.mc; });
+
+  if (priceChart) {
+    priceChart.data.labels = labels;
+    priceChart.data.datasets[0].data = values;
+    priceChart.update('none');
+    return;
+  }
+
+  priceChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: values,
+        borderColor: '#476C8E',
+        backgroundColor: 'rgba(71,108,142,0.08)',
+        borderWidth: 2,
+        fill: true,
+        pointRadius: 0,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#2e4453',
+          titleFont: { family: 'Verdana', size: 9 },
+          bodyFont: { family: 'Verdana', size: 9 },
+          callbacks: {
+            label: function(ctx) {
+              return '$' + formatNumber(ctx.parsed.y);
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: '#e8ecf0' },
+          ticks: { font: { family: 'Verdana', size: 9 }, color: '#888', maxTicksLimit: 8 }
+        },
+        y: {
+          grid: { color: '#e8ecf0' },
+          ticks: {
+            font: { family: 'Verdana', size: 9 },
+            color: '#888',
+            callback: function(val) { return '$' + formatNumber(val); }
+          }
+        }
+      }
+    }
+  });
+}
+
+function addChartPoint(marketCap) {
+  if (!marketCap || marketCap <= 0) return;
+  chartPoints.push({ t: Date.now(), mc: marketCap });
+  if (chartPoints.length > 500) chartPoints.shift();
+  renderChart();
+}
+
 // Load coin data and comments
 async function loadThread() {
   try {
@@ -91,6 +188,12 @@ async function loadThread() {
     document.getElementById('coinMeta').textContent = createdDate.toLocaleString();
 
     await loadComments();
+
+    // Load chart history, seed with current MC if empty
+    await loadChart();
+    if (chartPoints.length === 0 && coin.marketCap) {
+      addChartPoint(coin.marketCap);
+    }
 
   } catch (error) {
     console.error('Error loading thread:', error);
@@ -276,6 +379,7 @@ if (typeof WsClient !== 'undefined') {
       ? '$' + formatNumber(data.volume24h)
       : '—';
     document.getElementById('statHolders').textContent = data.holders || '0';
+    addChartPoint(data.marketCap);
   });
   WsClient.subscribe([mint]);
 }

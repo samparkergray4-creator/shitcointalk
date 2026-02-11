@@ -3,7 +3,7 @@ import { createServer } from 'http';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import cors from 'cors';
-import { initWebSockets } from './websocket.js';
+import { initWebSockets, getPriceHistory } from './websocket.js';
 import dotenv from 'dotenv';
 import { Connection, PublicKey, Keypair, VersionedTransaction, LAMPORTS_PER_SOL, SystemProgram, Transaction } from '@solana/web3.js';
 import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferInstruction, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
@@ -766,6 +766,12 @@ app.get('/api/coin/:mint', async (req, res) => {
     console.error('Error fetching coin data:', error.message);
     res.status(500).json({ success: false, error: 'Failed to fetch coin data' });
   }
+});
+
+// Get price history for chart
+app.get('/api/coin/:mint/chart', (req, res) => {
+  const { mint } = req.params;
+  res.json({ success: true, points: getPriceHistory(mint) });
 });
 
 // ===== COMMENT ENDPOINTS =====

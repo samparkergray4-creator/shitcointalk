@@ -4,6 +4,10 @@ import WebSocket, { WebSocketServer } from 'ws';
 const clients = new Map(); // ws -> Set<mint>
 const mintSubscribers = new Map(); // mint -> Set<ws>
 
+// Price history: mint -> array of {t, mc} points (ring buffer, max 500)
+const priceHistory = new Map();
+const MAX_HISTORY_POINTS = 500;
+
 // Throttle: track last fetch time per mint
 const lastFetch = new Map(); // mint -> timestamp
 const THROTTLE_MS = 5000;
@@ -155,10 +159,20 @@ async function onTradeEvent(mint) {
     const marketData = await fetchMarketData(mint);
     if (!marketData) return;
 
+    const mc = marketData.marketCap || 0;
+
+    // Store price history point
+    if (mc > 0) {
+      if (!priceHistory.has(mint)) priceHistory.set(mint, []);
+      const history = priceHistory.get(mint);
+      history.push({ t: Date.now(), mc });
+      if (history.length > MAX_HISTORY_POINTS) history.shift();
+    }
+
     const payload = JSON.stringify({
       type: 'coinUpdate',
       mint,
-      marketCap: marketData.marketCap || 0,
+      marketCap: mc,
       volume24h: marketData.volume || 0,
       holders: marketData.holders || 0,
       graduated: marketData.graduated || false
@@ -173,4 +187,8 @@ async function onTradeEvent(mint) {
   } catch (err) {
     console.error(`[WS] Error fetching data for ${mint}:`, err.message);
   }
+}
+
+export function getPriceHistory(mint) {
+  return priceHistory.get(mint) || [];
 }
