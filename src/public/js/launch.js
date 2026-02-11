@@ -327,7 +327,7 @@ function renderThreads() {
             </div>
             <div style="font-size: 10px; color: #666;">
               by <b>${escapeHtml(thread.creatorUsername || 'Anonymous')}</b>
-              ${thread.twitter ? ` • <a href="${normalizeTwitterUrl(thread.twitter)}" target="_blank" style="color: #1DA1F2;">🐦</a>` : ''}
+              ${thread.twitter ? ` • <a href="${normalizeTwitterUrl(thread.twitter)}" target="_blank" style="color: #000; font-weight: bold; text-decoration: none;">𝕏</a>` : ''}
             </div>
           </td>
           <td style="padding: 8px;">
