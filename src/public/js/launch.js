@@ -469,11 +469,36 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// WebSocket real-time updates for coin list
+if (typeof WsClient !== 'undefined') {
+  WsClient.init(function(data) {
+    var mcEl = document.getElementById('mc-' + data.mint);
+    if (mcEl && data.marketCap) {
+      mcEl.textContent = '$' + formatNumber(data.marketCap);
+    }
+    var volEl = document.getElementById('vol-' + data.mint);
+    if (volEl && data.volume24h) {
+      volEl.textContent = '$' + formatNumber(data.volume24h);
+    }
+  });
+}
+
+// Subscribe to visible mints after rendering
+var _origRenderThreads = renderThreads;
+renderThreads = function() {
+  _origRenderThreads();
+  if (typeof WsClient !== 'undefined') {
+    var threadsToRender = filteredThreads.length > 0 || searchQuery ? filteredThreads : currentThreads;
+    var mints = threadsToRender.map(function(t) { return t.mint; });
+    if (mints.length > 0) WsClient.subscribe(mints);
+  }
+};
+
 // Load coins on page load
 loadRecentCoins();
 
-// Reload coins every 30 seconds
-setInterval(loadRecentCoins, 30000);
+// Fallback polling every 120 seconds (reduced from 30s since WS handles real-time)
+setInterval(loadRecentCoins, 120000);
 
 // Update launch button text when dev buy changes
 document.getElementById('devBuy').addEventListener('input', function(e) {

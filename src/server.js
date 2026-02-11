@@ -1,7 +1,9 @@
 import express from 'express';
+import { createServer } from 'http';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import cors from 'cors';
+import { initWebSockets } from './websocket.js';
 import dotenv from 'dotenv';
 import { Connection, PublicKey, Keypair, VersionedTransaction, LAMPORTS_PER_SOL, SystemProgram, Transaction } from '@solana/web3.js';
 import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferInstruction, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
@@ -461,19 +463,38 @@ app.post('/api/launch/confirm', async (req, res) => {
     // Transfer dev buy tokens from creator wallet to user's wallet
     if (!MOCK_MODE && tokenData.devBuyAmount > 0 && tokenData.userWallet) {
       try {
+        // Wait for token creation to fully settle on-chain
+        console.log('Waiting for token accounts to settle...');
+        await new Promise(resolve => setTimeout(resolve, 15000));
+
         const creatorKeypair = Keypair.fromSecretKey(bs58.decode(tokenData.creatorPrivateKey));
         const mintKeypair = Keypair.fromSecretKey(bs58.decode(tokenData.mintPrivateKey));
         const userPubkey = new PublicKey(tokenData.userWallet);
         const mintPubkey = mintKeypair.publicKey;
 
+        // Detect which token program the mint uses (SPL Token vs Token2022)
+        const mintAccountInfo = await connection.getAccountInfo(mintPubkey);
+        const tokenProgramId = mintAccountInfo.owner;
+        console.log(`Token program: ${tokenProgramId.toString()}`);
+
         // Get creator's token account
-        const creatorTokenAccount = await getAssociatedTokenAddress(mintPubkey, creatorKeypair.publicKey);
+        const creatorTokenAccount = await getAssociatedTokenAddress(mintPubkey, creatorKeypair.publicKey, false, tokenProgramId);
 
         // Get/create user's token account
-        const userTokenAccount = await getAssociatedTokenAddress(mintPubkey, userPubkey);
+        const userTokenAccount = await getAssociatedTokenAddress(mintPubkey, userPubkey, false, tokenProgramId);
 
-        // Check creator's token balance
-        const tokenBalance = await connection.getTokenAccountBalance(creatorTokenAccount);
+        // Retry getting token balance (account may take time to appear)
+        let tokenBalance;
+        for (let i = 0; i < 5; i++) {
+          try {
+            tokenBalance = await connection.getTokenAccountBalance(creatorTokenAccount);
+            break;
+          } catch (e) {
+            console.log(`Token account not ready yet, retry ${i + 1}/5...`);
+            await new Promise(resolve => setTimeout(resolve, 5000));
+          }
+        }
+        if (!tokenBalance) throw new Error('Token account never appeared');
         const amount = BigInt(tokenBalance.value.amount);
 
         if (amount > 0n) {
@@ -489,7 +510,8 @@ app.post('/api/launch/confirm', async (req, res) => {
                 creatorKeypair.publicKey, // payer
                 userTokenAccount,         // associated token account
                 userPubkey,               // owner
-                mintPubkey                // mint
+                mintPubkey,               // mint
+                tokenProgramId            // token program
               )
             );
           }
@@ -500,7 +522,9 @@ app.post('/api/launch/confirm', async (req, res) => {
               creatorTokenAccount,       // from
               userTokenAccount,          // to
               creatorKeypair.publicKey,  // authority
-              amount                     // amount
+              amount,                    // amount
+              [],                        // multiSigners
+              tokenProgramId             // token program
             )
           );
 
@@ -574,57 +598,6 @@ app.post('/api/launch/confirm', async (req, res) => {
 });
 
 // ===== COIN DATA ENDPOINTS =====
-
-// Get coin data
-app.get('/api/coin/:mint', async (req, res) => {
-  const { mint } = req.params;
-
-  // Check cache first (for recently created tokens with imageDataUrl)
-  const cachedData = cacheGet(`pending:${mint}`);
-
-  // Try to fetch from pump.fun first
-  const coinData = await fetchPumpFunData(mint);
-
-  if (coinData) {
-    // Real pump.fun data available
-    return res.json({
-      mint,
-      name: coinData.name,
-      symbol: coinData.symbol,
-      description: coinData.description,
-      image: convertIpfsUrl(coinData.image_uri),
-      marketCap: coinData.usd_market_cap,
-      volume24h: coinData.volume_24h,
-      priceUsd: coinData.price_usd,
-      holders: coinData.holder_count || 0,
-      createdAt: coinData.created_timestamp
-    });
-  }
-
-  // Fallback to Firebase data (for MOCK_MODE or if pump.fun is unavailable)
-  const threadData = await getThread(mint);
-  if (threadData) {
-    // Priority: cached base64 > stored imageDataUrl > converted IPFS/Firebase Storage URL
-    let imageUrl = cachedData?.imageDataUrl || threadData.imageDataUrl || convertIpfsUrl(threadData.image);
-
-    return res.json({
-      mint,
-      name: threadData.name,
-      symbol: threadData.symbol,
-      description: threadData.description,
-      image: imageUrl,
-      creatorUsername: threadData.creatorUsername || 'Anonymous',
-      twitter: threadData.twitter || '',
-      marketCap: 0,
-      volume24h: 0,
-      priceUsd: 0,
-      holders: 0,
-      createdAt: threadData.createdAt?._seconds || Math.floor(Date.now() / 1000)
-    });
-  }
-
-  return res.status(404).json({ error: 'Coin not found' });
-});
 
 // ===== THREADS LIST ENDPOINT =====
 
@@ -710,114 +683,60 @@ app.get('/api/image/:hash', async (req, res) => {
   }
 });
 
-// Read pump.fun bonding curve data directly from on-chain
-const PUMP_FUN_PROGRAM = new PublicKey('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
-
-async function getPumpFunBondingCurve(mintAddress) {
+// Fetch coin market data from pump.fun APIs
+async function fetchPumpMarketData(mintAddress) {
   try {
-    const mintPubkey = new PublicKey(mintAddress);
+    // Fetch from both pump.fun APIs in parallel
+    const [v3Res, advRes] = await Promise.allSettled([
+      fetch(`https://frontend-api-v3.pump.fun/coins/${mintAddress}`),
+      fetch(`https://advanced-api-v2.pump.fun/coins/metadata/${mintAddress}`)
+    ]);
 
-    // Derive bonding curve PDA
-    const [bondingCurve] = PublicKey.findProgramAddressSync(
-      [Buffer.from('bonding-curve'), mintPubkey.toBuffer()],
-      PUMP_FUN_PROGRAM
-    );
+    let marketCap = 0;
+    let volume = 0;
+    let holders = 0;
+    let priceUsd = 0;
+    let graduated = false;
 
-    console.log(`Bonding curve PDA for ${mintAddress}: ${bondingCurve.toString()}`);
-
-    const accountInfo = await connection.getAccountInfo(bondingCurve);
-    if (!accountInfo || !accountInfo.data) {
-      console.log(`No bonding curve account found for ${mintAddress}`);
-      return null;
-    }
-
-    console.log(`Bonding curve data length: ${accountInfo.data.length}, owner: ${accountInfo.owner.toString()}`);
-
-    const data = accountInfo.data;
-
-    // Parse bonding curve account (after 8-byte discriminator)
-    const virtualTokenReserves = data.readBigUInt64LE(8);
-    const virtualSolReserves = data.readBigUInt64LE(16);
-    const realTokenReserves = data.readBigUInt64LE(24);
-    const realSolReserves = data.readBigUInt64LE(32);
-    const tokenTotalSupply = data.readBigUInt64LE(40);
-    const complete = data[48] === 1; // Token has graduated to Raydium
-
-    // Calculate price: SOL per token
-    const priceInSol = Number(virtualSolReserves) / Number(virtualTokenReserves);
-
-    // Get SOL price in USD
+    // v3 API: best source for USD market cap
     let solPriceUsd = 0;
-    try {
-      const solRes = await fetch('https://api.dexscreener.com/latest/dex/tokens/So11111111111111111111111111111111111111112');
-      if (solRes.ok) {
-        const solData = await solRes.json();
-        if (solData.pairs && solData.pairs.length > 0) {
-          solPriceUsd = parseFloat(solData.pairs[0].priceUsd || 0);
-        }
-      }
-    } catch (e) {
-      solPriceUsd = 84; // Fallback SOL price estimate
+    if (v3Res.status === 'fulfilled' && v3Res.value.ok) {
+      const v3Data = await v3Res.value.json();
+      marketCap = parseFloat(v3Data.usd_market_cap || 0);
+      graduated = v3Data.complete || false;
+      // Derive SOL price from v3 data to convert volume
+      const mcSol = parseFloat(v3Data.market_cap || 0);
+      if (mcSol > 0) solPriceUsd = marketCap / mcSol;
     }
 
-    const priceUsd = priceInSol * solPriceUsd;
-    const totalSupply = Number(tokenTotalSupply) / 1e6; // pump.fun tokens have 6 decimals
-    const marketCap = priceUsd * totalSupply;
+    // Advanced API: volume, holders, trades
+    if (advRes.status === 'fulfilled' && advRes.value.ok) {
+      const advData = await advRes.value.json();
+      const volumeSol = parseFloat(advData.volume || 0);
+      volume = solPriceUsd > 0 ? volumeSol * solPriceUsd : volumeSol;
+      holders = parseInt(advData.num_holders_v2 || advData.num_holders || 0);
+      // If v3 didn't give us market cap, use advanced API
+      if (!marketCap) {
+        marketCap = parseFloat(advData.marketcap || 0);
+      }
+    }
 
-    return {
-      marketCap,
-      priceUsd,
-      priceInSol,
-      virtualSolReserves: Number(virtualSolReserves) / LAMPORTS_PER_SOL,
-      realSolReserves: Number(realSolReserves) / LAMPORTS_PER_SOL,
-      complete
-    };
+    console.log(`Pump.fun data for ${mintAddress}: MC=$${marketCap.toFixed(2)}, Vol=${volume}, Holders=${holders}`);
+
+    return { marketCap, volume, holders, priceUsd, graduated };
   } catch (error) {
-    console.error('Error reading bonding curve:', error.message);
+    console.error('Error fetching pump.fun data:', error.message);
     return null;
   }
 }
 
-// Get coin data - reads on-chain bonding curve, falls back to DexScreener
+// Get coin data from pump.fun APIs
 app.get('/api/coin/:mint', async (req, res) => {
   try {
     const { mint } = req.params;
 
-    let marketData = null;
-
-    // Try reading on-chain bonding curve data
-    const bondingData = await getPumpFunBondingCurve(mint);
-    if (bondingData && bondingData.marketCap > 0) {
-      marketData = {
-        marketCap: bondingData.marketCap,
-        volume24h: 0,
-        priceUsd: bondingData.priceUsd,
-        holders: 0,
-        graduated: bondingData.complete
-      };
-    }
-
-    // If graduated or no bonding curve, try DexScreener
-    if (!marketData || bondingData?.complete) {
-      try {
-        const dexResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`);
-        if (dexResponse.ok) {
-          const dexData = await dexResponse.json();
-          if (dexData.pairs && dexData.pairs.length > 0) {
-            const pair = dexData.pairs[0];
-            marketData = {
-              marketCap: parseFloat(pair.fdv || pair.marketCap || 0),
-              volume24h: parseFloat(pair.volume?.h24 || 0),
-              priceUsd: parseFloat(pair.priceUsd || 0),
-              holders: 0,
-              graduated: true
-            };
-          }
-        }
-      } catch (error) {
-        // DexScreener failed
-      }
-    }
+    // Fetch market data from pump.fun
+    const marketData = await fetchPumpMarketData(mint);
 
     // Get token metadata from Firebase
     const thread = await getThread(mint);
@@ -836,7 +755,7 @@ app.get('/api/coin/:mint', async (req, res) => {
       creatorUsername: thread.creatorUsername,
       twitter: thread.twitter,
       marketCap: marketData?.marketCap || 0,
-      volume24h: marketData?.volume24h || 0,
+      volume24h: marketData?.volume || 0,
       priceUsd: marketData?.priceUsd || 0,
       holders: marketData?.holders || 0,
       graduated: marketData?.graduated || false,
@@ -893,7 +812,9 @@ app.get('/thread/:mint', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+const httpServer = createServer(app);
+initWebSockets(httpServer, fetchPumpMarketData);
+httpServer.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════════╗
 ║  Bitcointalk Launchpad Server             ║

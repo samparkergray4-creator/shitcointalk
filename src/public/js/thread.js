@@ -265,8 +265,23 @@ async function refreshStats() {
   }
 }
 
-// Auto-refresh stats every 10 seconds
-setInterval(refreshStats, 10000);
+// WebSocket real-time updates
+if (typeof WsClient !== 'undefined') {
+  WsClient.init(function(data) {
+    if (data.mint !== mint) return;
+    document.getElementById('statMC').textContent = data.marketCap
+      ? '$' + formatNumber(data.marketCap)
+      : '—';
+    document.getElementById('statVolume').textContent = data.volume24h
+      ? '$' + formatNumber(data.volume24h)
+      : '—';
+    document.getElementById('statHolders').textContent = data.holders || '0';
+  });
+  WsClient.subscribe([mint]);
+}
+
+// Fallback polling every 60 seconds (reduced from 10s since WS handles real-time)
+setInterval(refreshStats, 60000);
 // Also fetch immediately
 refreshStats();
 
