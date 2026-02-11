@@ -1002,12 +1002,12 @@ app.post('/api/dev-logs', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    const { title, content } = req.body;
+    const { title, content, author } = req.body;
     if (!title || !content) {
       return res.status(400).json({ success: false, error: 'Missing title or content' });
     }
 
-    const id = await addDevLog(title, content);
+    const id = await addDevLog(title, content, author);
     res.json({ success: true, id });
   } catch (error) {
     console.error('Error creating dev log:', error);

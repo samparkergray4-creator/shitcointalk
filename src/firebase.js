@@ -195,7 +195,7 @@ export async function getAllThreads(limit = 50) {
 // ===== DEV LOGS =====
 
 // Add a dev log entry
-export async function addDevLog(title, content) {
+export async function addDevLog(title, content, author) {
   if (!db) {
     throw new Error('Firebase not configured');
   }
@@ -203,6 +203,7 @@ export async function addDevLog(title, content) {
   const docRef = await db.collection('dev_logs').add({
     title,
     content,
+    author: author || 'Admin',
     createdAt: admin.firestore.FieldValue.serverTimestamp()
   });
 
