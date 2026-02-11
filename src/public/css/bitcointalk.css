@@ -516,6 +516,34 @@ table.post_table td.post_body.alt {
   to { transform: rotate(360deg); }
 }
 
+/* ===== TIMEFRAME BUTTONS ===== */
+.tf-bar {
+  margin-bottom: 6px;
+}
+.tf-btn {
+  display: inline-block;
+  padding: 2px 8px;
+  font-family: verdana, sans-serif;
+  font-size: 10px;
+  font-weight: bold;
+  color: #333;
+  background: #ECEDF3;
+  border: 1px solid #ADADAD;
+  cursor: pointer;
+  margin-right: 2px;
+}
+.tf-btn:hover {
+  background: #d3dce3;
+}
+.tf-btn-active {
+  background: #476C8E;
+  color: #fff;
+  border-color: #3A5A75;
+}
+.tf-btn-active:hover {
+  background: #3A5A75;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
   body {

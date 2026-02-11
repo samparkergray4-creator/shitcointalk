@@ -145,6 +145,13 @@
         <!-- Price Chart -->
         <div class="coin_stats" id="chartSection" style="margin-top: 12px;">
           <div style="font-weight: bold; margin-bottom: 8px; font-size: 12px;">📈 Price Chart</div>
+          <div class="tf-bar" id="tfBar">
+            <button class="tf-btn tf-btn-active" data-tf="line" onclick="switchChartMode('line')">Line</button>
+            <button class="tf-btn" data-tf="1m" onclick="switchChartMode('1m')">1m</button>
+            <button class="tf-btn" data-tf="5m" onclick="switchChartMode('5m')">5m</button>
+            <button class="tf-btn" data-tf="15m" onclick="switchChartMode('15m')">15m</button>
+            <button class="tf-btn" data-tf="1h" onclick="switchChartMode('1h')">1h</button>
+          </div>
           <div id="priceChart" style="height: 250px;"></div>
           <div id="chartPlaceholder" style="text-align: center; color: #888; font-size: 11px; font-family: Verdana, sans-serif; padding: 8px 0;">Waiting for trade data...</div>
           <div style="text-align: right; color: #999; font-size: 9px; font-family: Verdana, sans-serif; margin-top: 4px;">Market Cap (USD) &mdash; Real-time updates</div>

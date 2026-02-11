@@ -8,6 +8,52 @@ const mintSubscribers = new Map(); // mint -> Set<ws>
 const priceHistory = new Map();
 const MAX_HISTORY_POINTS = 500;
 
+// OHLC candle aggregation
+const TIMEFRAMES = { '1m': 60000, '5m': 300000, '15m': 900000, '1h': 3600000 };
+const candleHistory = new Map(); // mint -> { tf -> Array<{t, o, h, l, c}> }
+const MAX_CANDLES = 500;
+
+function floorToTimeframe(ms, interval) {
+  return Math.floor(ms / interval) * interval;
+}
+
+function updateCandles(mint, mc, timestamp) {
+  if (!candleHistory.has(mint)) candleHistory.set(mint, {});
+  const mintCandles = candleHistory.get(mint);
+
+  for (const [tf, interval] of Object.entries(TIMEFRAMES)) {
+    if (!mintCandles[tf]) mintCandles[tf] = [];
+    const candles = mintCandles[tf];
+    const candleTime = floorToTimeframe(timestamp, interval);
+    const last = candles.length > 0 ? candles[candles.length - 1] : null;
+
+    if (last && last.t === candleTime) {
+      // Update existing candle
+      if (mc > last.h) last.h = mc;
+      if (mc < last.l) last.l = mc;
+      last.c = mc;
+    } else {
+      // New candle — open = previous close or current mc
+      const openPrice = last ? last.c : mc;
+      candles.push({ t: candleTime, o: openPrice, h: Math.max(openPrice, mc), l: Math.min(openPrice, mc), c: mc });
+      if (candles.length > MAX_CANDLES) candles.shift();
+    }
+  }
+}
+
+function getCurrentCandles(mint) {
+  const mintCandles = candleHistory.get(mint);
+  if (!mintCandles) return null;
+  const result = {};
+  for (const tf of Object.keys(TIMEFRAMES)) {
+    const candles = mintCandles[tf];
+    if (candles && candles.length > 0) {
+      result[tf] = candles[candles.length - 1];
+    }
+  }
+  return result;
+}
+
 // Throttle: track last fetch time per mint
 const lastFetch = new Map(); // mint -> timestamp
 const THROTTLE_MS = 5000;
@@ -161,12 +207,15 @@ async function onTradeEvent(mint) {
 
     const mc = marketData.marketCap || 0;
 
-    // Store price history point
+    // Store price history point and update candles
     if (mc > 0) {
+      const ts = Date.now();
       if (!priceHistory.has(mint)) priceHistory.set(mint, []);
       const history = priceHistory.get(mint);
-      history.push({ t: Date.now(), mc });
+      history.push({ t: ts, mc });
       if (history.length > MAX_HISTORY_POINTS) history.shift();
+
+      updateCandles(mint, mc, ts);
     }
 
     const payload = JSON.stringify({
@@ -175,7 +224,8 @@ async function onTradeEvent(mint) {
       marketCap: mc,
       volume24h: marketData.volume || 0,
       holders: marketData.holders || 0,
-      graduated: marketData.graduated || false
+      graduated: marketData.graduated || false,
+      candles: getCurrentCandles(mint)
     });
 
     // Broadcast to all subscribers of this mint
@@ -191,4 +241,10 @@ async function onTradeEvent(mint) {
 
 export function getPriceHistory(mint) {
   return priceHistory.get(mint) || [];
+}
+
+export function getCandleHistory(mint, tf) {
+  const mintCandles = candleHistory.get(mint);
+  if (!mintCandles || !mintCandles[tf]) return [];
+  return mintCandles[tf];
 }

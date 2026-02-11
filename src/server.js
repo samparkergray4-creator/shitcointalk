@@ -3,7 +3,7 @@ import { createServer } from 'http';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import cors from 'cors';
-import { initWebSockets, getPriceHistory } from './websocket.js';
+import { initWebSockets, getPriceHistory, getCandleHistory } from './websocket.js';
 import dotenv from 'dotenv';
 import { Connection, PublicKey, Keypair, VersionedTransaction, LAMPORTS_PER_SOL, SystemProgram, Transaction } from '@solana/web3.js';
 import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferInstruction, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
@@ -771,6 +771,16 @@ app.get('/api/coin/:mint', async (req, res) => {
 // Get price history for chart
 app.get('/api/coin/:mint/chart', (req, res) => {
   const { mint } = req.params;
+  const { tf } = req.query;
+
+  if (tf) {
+    const validTf = ['1m', '5m', '15m', '1h'];
+    if (!validTf.includes(tf)) {
+      return res.status(400).json({ success: false, error: 'Invalid timeframe. Use: 1m, 5m, 15m, 1h' });
+    }
+    return res.json({ success: true, tf, candles: getCandleHistory(mint, tf) });
+  }
+
   res.json({ success: true, points: getPriceHistory(mint) });
 });
 

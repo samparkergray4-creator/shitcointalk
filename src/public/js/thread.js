@@ -7,7 +7,15 @@ console.log('Loading thread for mint:', mint);
 // ===== CHART =====
 var priceChart = null;
 var areaSeries = null;
+var candleSeries = null;
 var chartPoints = [];
+var candlePoints = [];
+var currentMode = 'line'; // 'line' | '1m' | '5m' | '15m' | '1h'
+
+var chartPriceFormat = {
+  type: 'custom',
+  formatter: function(price) { return '$' + formatNumber(price); }
+};
 
 function initChart() {
   var container = document.getElementById('priceChart');
@@ -39,19 +47,99 @@ function initChart() {
     handleScale: false,
     handleScroll: false
   });
+}
 
-  areaSeries = priceChart.addAreaSeries({
-    lineColor: '#476C8E',
-    lineWidth: 2,
-    topColor: 'rgba(71,108,142,0.15)',
-    bottomColor: 'rgba(71,108,142,0.02)',
-    priceFormat: {
-      type: 'custom',
-      formatter: function(price) { return '$' + formatNumber(price); }
-    }
+function showAreaSeries() {
+  if (!priceChart) initChart();
+  if (candleSeries) {
+    priceChart.removeSeries(candleSeries);
+    candleSeries = null;
+  }
+  if (!areaSeries) {
+    areaSeries = priceChart.addAreaSeries({
+      lineColor: '#476C8E',
+      lineWidth: 2,
+      topColor: 'rgba(71,108,142,0.15)',
+      bottomColor: 'rgba(71,108,142,0.02)',
+      priceFormat: chartPriceFormat
+    });
+  }
+
+  var seriesData = chartPoints.map(function(p) {
+    return { time: Math.floor(p.t / 1000), value: p.mc };
   });
-
+  areaSeries.setData(seriesData);
   priceChart.timeScale().fitContent();
+}
+
+function showCandleSeries() {
+  if (!priceChart) initChart();
+  if (areaSeries) {
+    priceChart.removeSeries(areaSeries);
+    areaSeries = null;
+  }
+  if (!candleSeries) {
+    candleSeries = priceChart.addCandlestickSeries({
+      upColor: '#476C8E',
+      borderUpColor: '#3A5A75',
+      wickUpColor: '#3A5A75',
+      downColor: '#B75050',
+      borderDownColor: '#994040',
+      wickDownColor: '#994040',
+      priceFormat: chartPriceFormat
+    });
+  }
+}
+
+function renderCandles() {
+  if (!candleSeries) return;
+  var data = candlePoints.map(function(c) {
+    return { time: Math.floor(c.t / 1000), open: c.o, high: c.h, low: c.l, close: c.c };
+  });
+  candleSeries.setData(data);
+  priceChart.timeScale().fitContent();
+}
+
+async function loadCandles(tf) {
+  try {
+    var res = await fetch('/api/coin/' + mint + '/chart?tf=' + tf);
+    var data = await res.json();
+    if (data.success && data.candles && data.candles.length > 0) {
+      candlePoints = data.candles;
+    } else {
+      candlePoints = [];
+    }
+    showCandleSeries();
+    renderCandles();
+
+    var placeholder = document.getElementById('chartPlaceholder');
+    if (placeholder) placeholder.style.display = candlePoints.length > 0 ? 'none' : '';
+  } catch (e) {
+    console.error('Error loading candles:', e);
+  }
+}
+
+function switchChartMode(mode) {
+  currentMode = mode;
+
+  // Update button styling
+  var btns = document.querySelectorAll('#tfBar .tf-btn');
+  for (var i = 0; i < btns.length; i++) {
+    if (btns[i].getAttribute('data-tf') === mode) {
+      btns[i].classList.add('tf-btn-active');
+    } else {
+      btns[i].classList.remove('tf-btn-active');
+    }
+  }
+
+  if (mode === 'line') {
+    if (!priceChart) initChart();
+    showAreaSeries();
+    var placeholder = document.getElementById('chartPlaceholder');
+    if (placeholder) placeholder.style.display = chartPoints.length > 0 ? 'none' : '';
+  } else {
+    loadCandles(mode);
+  }
 }
 
 async function loadChart() {
@@ -76,35 +164,34 @@ function renderChart() {
   if (placeholder) placeholder.style.display = 'none';
 
   if (!priceChart) initChart();
-  if (!areaSeries) return;
 
-  var seriesData = chartPoints.map(function(p) {
-    return { time: Math.floor(p.t / 1000), value: p.mc };
-  });
-
-  areaSeries.setData(seriesData);
-  priceChart.timeScale().fitContent();
+  // Only render area series in line mode
+  if (currentMode === 'line') {
+    showAreaSeries();
+  }
 }
 
-function addChartPoint(marketCap) {
+function addChartPoint(marketCap, wsCandles) {
   if (!marketCap || marketCap <= 0) return;
   chartPoints.push({ t: Date.now(), mc: marketCap });
   if (chartPoints.length > 500) chartPoints.shift();
 
-  if (!priceChart) {
-    renderChart();
-    return;
-  }
-
   var placeholder = document.getElementById('chartPlaceholder');
   if (placeholder) placeholder.style.display = 'none';
 
-  if (!areaSeries) {
-    initChart();
-  }
+  if (!priceChart) initChart();
 
-  var point = { time: Math.floor(Date.now() / 1000), value: marketCap };
-  areaSeries.update(point);
+  if (currentMode === 'line') {
+    // Area series update
+    if (!areaSeries) showAreaSeries();
+    var point = { time: Math.floor(Date.now() / 1000), value: marketCap };
+    areaSeries.update(point);
+  } else if (wsCandles && wsCandles[currentMode] && candleSeries) {
+    // Candlestick real-time update from WS payload
+    var c = wsCandles[currentMode];
+    var candleData = { time: Math.floor(c.t / 1000), open: c.o, high: c.h, low: c.l, close: c.c };
+    candleSeries.update(candleData);
+  }
 }
 
 // Load coin data and comments
@@ -385,7 +472,7 @@ if (typeof WsClient !== 'undefined') {
       ? '$' + formatNumber(data.volume24h)
       : '—';
     document.getElementById('statHolders').textContent = data.holders || '0';
-    addChartPoint(data.marketCap);
+    addChartPoint(data.marketCap, data.candles);
   });
   WsClient.subscribe([mint]);
 }
