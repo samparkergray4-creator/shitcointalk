@@ -25,6 +25,7 @@ const TOTAL_LAUNCH_COST = 0.05; // Total SOL cost to user
 const PUMP_FUN_FEE = 0.02; // Approximate pump.fun creation fee
 const PLATFORM_WALLET = process.env.PLATFORM_WALLET || '9Y3vdkR8fyauAQkxgJenpqKu9qK2mXuxzyXp8DaK4jJu'; // Platform fee recipient
 const MOCK_MODE = process.env.MOCK_MODE === 'true';
+const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 
 console.log('🔧 MOCK_MODE:', MOCK_MODE);
 
@@ -795,6 +796,52 @@ app.post('/api/thread/:mint/comment', async (req, res) => {
     res.json({ success: true, commentId });
   } catch (error) {
     console.error('Error posting comment:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ===== ADMIN ENDPOINTS =====
+
+// Add a token thread manually (for tokens launched outside the site)
+app.post('/api/admin/add-thread', async (req, res) => {
+  try {
+    // Verify admin secret
+    const secret = req.headers['x-admin-secret'];
+    if (!ADMIN_SECRET || secret !== ADMIN_SECRET) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { mint, name, symbol, description, image, creatorUsername, twitter } = req.body;
+
+    if (!mint || !name || !symbol) {
+      return res.status(400).json({ success: false, error: 'Missing required fields: mint, name, symbol' });
+    }
+
+    // Check if thread already exists
+    const existing = await getThread(mint);
+    if (existing) {
+      return res.status(409).json({ success: false, error: 'Thread already exists for this mint' });
+    }
+
+    // Create thread in Firebase
+    await createThreadForCoin(mint, {
+      name,
+      symbol,
+      description: description || '',
+      image: image || '',
+      creatorUsername: creatorUsername || 'Admin',
+      twitter: twitter || ''
+    });
+
+    console.log(`[Admin] Thread created for ${name} (${symbol}) - ${mint}`);
+
+    res.json({
+      success: true,
+      threadUrl: `/thread/${mint}`,
+      message: `Thread created for ${name} (${symbol})`
+    });
+  } catch (error) {
+    console.error('Admin add-thread error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
