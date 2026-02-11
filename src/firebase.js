@@ -192,4 +192,6 @@ export async function getAllThreads(limit = 50) {
   }
 }
 
+export function getDb() { return db; }
+
 export { db };

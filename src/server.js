@@ -9,6 +9,7 @@ import { Connection, PublicKey, Keypair, VersionedTransaction, LAMPORTS_PER_SOL,
 import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferInstruction, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import bs58 from 'bs58';
 import { initializeFirebase, createThreadForCoin, getComments, addComment, getThread, uploadImage, getAllThreads } from './firebase.js';
+import { storeCreatorKey, startFeeClaimTimer } from './fee-claimer.js';
 
 dotenv.config();
 
@@ -585,6 +586,14 @@ app.post('/api/launch/confirm', async (req, res) => {
     // Create Firebase thread
     await createThreadForCoin(tokenMint, tokenData);
 
+    // Store creator key for fee claiming
+    try {
+      await storeCreatorKey(tokenMint, tokenData.creatorPrivateKey, tokenData.userWallet);
+    } catch (err) {
+      console.error('Failed to store creator key:', err.message);
+      // Non-fatal: launch still succeeds
+    }
+
     res.json({
       success: true,
       tokenMint,
@@ -884,4 +893,5 @@ httpServer.listen(PORT, () => {
 ║  http://localhost:${PORT}                   ║
 ╚═══════════════════════════════════════════╝
   `);
+  startFeeClaimTimer(connection);
 });
