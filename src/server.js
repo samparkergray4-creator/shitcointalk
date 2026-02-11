@@ -157,9 +157,9 @@ app.post('/api/launch/prepare', async (req, res) => {
         name,
         symbol,
         description: description || '',
-        twitter: '',
+        twitter: twitter || '',
         telegram: '',
-        website: '', // Empty for now - will add shitcointalk.fun link later
+        website: '',
         showName: 'true'
       };
 
