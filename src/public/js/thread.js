@@ -6,7 +6,53 @@ console.log('Loading thread for mint:', mint);
 
 // ===== CHART =====
 var priceChart = null;
+var areaSeries = null;
 var chartPoints = [];
+
+function initChart() {
+  var container = document.getElementById('priceChart');
+  if (!container || priceChart) return;
+
+  priceChart = LightweightCharts.createChart(container, {
+    layout: {
+      background: { color: '#ffffff' },
+      textColor: '#888',
+      fontFamily: 'Verdana, sans-serif',
+      fontSize: 9
+    },
+    grid: {
+      vertLines: { color: '#e8ecf0' },
+      horzLines: { color: '#e8ecf0' }
+    },
+    crosshair: {
+      vertLine: { color: '#2e4453', labelBackgroundColor: '#2e4453' },
+      horzLine: { color: '#2e4453', labelBackgroundColor: '#2e4453' }
+    },
+    rightPriceScale: {
+      borderColor: '#e8ecf0'
+    },
+    timeScale: {
+      borderColor: '#e8ecf0',
+      timeVisible: true,
+      secondsVisible: false
+    },
+    handleScale: false,
+    handleScroll: false
+  });
+
+  areaSeries = priceChart.addAreaSeries({
+    lineColor: '#476C8E',
+    lineWidth: 2,
+    topColor: 'rgba(71,108,142,0.15)',
+    bottomColor: 'rgba(71,108,142,0.02)',
+    priceFormat: {
+      type: 'custom',
+      formatter: function(price) { return '$' + formatNumber(price); }
+    }
+  });
+
+  priceChart.timeScale().fitContent();
+}
 
 async function loadChart() {
   try {
@@ -29,76 +75,36 @@ function renderChart() {
   }
   if (placeholder) placeholder.style.display = 'none';
 
-  var ctx = document.getElementById('priceChart');
-  if (!ctx) return;
+  if (!priceChart) initChart();
+  if (!areaSeries) return;
 
-  var labels = chartPoints.map(function(p) {
-    var d = new Date(p.t);
-    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+  var seriesData = chartPoints.map(function(p) {
+    return { time: Math.floor(p.t / 1000), value: p.mc };
   });
-  var values = chartPoints.map(function(p) { return p.mc; });
 
-  if (priceChart) {
-    priceChart.data.labels = labels;
-    priceChart.data.datasets[0].data = values;
-    priceChart.update('none');
-    return;
-  }
-
-  priceChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [{
-        data: values,
-        borderColor: '#476C8E',
-        backgroundColor: 'rgba(71,108,142,0.08)',
-        borderWidth: 2,
-        fill: true,
-        pointRadius: 0,
-        tension: 0.3
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#2e4453',
-          titleFont: { family: 'Verdana', size: 9 },
-          bodyFont: { family: 'Verdana', size: 9 },
-          callbacks: {
-            label: function(ctx) {
-              return '$' + formatNumber(ctx.parsed.y);
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          grid: { color: '#e8ecf0' },
-          ticks: { font: { family: 'Verdana', size: 9 }, color: '#888', maxTicksLimit: 8 }
-        },
-        y: {
-          grid: { color: '#e8ecf0' },
-          ticks: {
-            font: { family: 'Verdana', size: 9 },
-            color: '#888',
-            callback: function(val) { return '$' + formatNumber(val); }
-          }
-        }
-      }
-    }
-  });
+  areaSeries.setData(seriesData);
+  priceChart.timeScale().fitContent();
 }
 
 function addChartPoint(marketCap) {
   if (!marketCap || marketCap <= 0) return;
   chartPoints.push({ t: Date.now(), mc: marketCap });
   if (chartPoints.length > 500) chartPoints.shift();
-  renderChart();
+
+  if (!priceChart) {
+    renderChart();
+    return;
+  }
+
+  var placeholder = document.getElementById('chartPlaceholder');
+  if (placeholder) placeholder.style.display = 'none';
+
+  if (!areaSeries) {
+    initChart();
+  }
+
+  var point = { time: Math.floor(Date.now() / 1000), value: marketCap };
+  areaSeries.update(point);
 }
 
 // Load coin data and comments
