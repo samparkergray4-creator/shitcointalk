@@ -100,6 +100,32 @@ function renderCandles() {
   priceChart.timeScale().fitContent();
 }
 
+function buildCandlesFromPoints(points, tf) {
+  var intervals = { '1m': 60000, '5m': 300000, '15m': 900000, '1h': 3600000 };
+  var interval = intervals[tf];
+  if (!interval || !points.length) return [];
+
+  var candles = [];
+  var cur = null;
+
+  for (var i = 0; i < points.length; i++) {
+    var p = points[i];
+    var ct = Math.floor(p.t / interval) * interval;
+
+    if (!cur || cur.t !== ct) {
+      if (cur) candles.push(cur);
+      var openPrice = cur ? cur.c : p.mc;
+      cur = { t: ct, o: openPrice, h: Math.max(openPrice, p.mc), l: Math.min(openPrice, p.mc), c: p.mc };
+    } else {
+      if (p.mc > cur.h) cur.h = p.mc;
+      if (p.mc < cur.l) cur.l = p.mc;
+      cur.c = p.mc;
+    }
+  }
+  if (cur) candles.push(cur);
+  return candles;
+}
+
 async function loadCandles(tf) {
   try {
     var res = await fetch('/api/coin/' + mint + '/chart?tf=' + tf);
@@ -107,7 +133,8 @@ async function loadCandles(tf) {
     if (data.success && data.candles && data.candles.length > 0) {
       candlePoints = data.candles;
     } else {
-      candlePoints = [];
+      // Fallback: build candles client-side from raw chart points
+      candlePoints = buildCandlesFromPoints(chartPoints, tf);
     }
     showCandleSeries();
     renderCandles();
