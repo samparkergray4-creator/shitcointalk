@@ -17,8 +17,13 @@
         <td class="catbg" height="32">
           <span style="font-family: Verdana, sans-serif; font-size: 140%;">shitcoin forum</span>
         </td>
-        <td align="right" class="catbg">
-          <img src="/images/smflogo.gif" style="margin: 2px;" alt="" />
+        <td align="right" class="catbg" style="font-family: Verdana, sans-serif; font-size: 10px; color: #d3dce3; padding-right: 8px;">
+          <span style="font-weight: bold;">Community:</span>
+          <code id="headerMint" style="font-size: 9px; cursor: pointer; margin: 0 4px;" onclick="copyCommunityMint()" title="Click to copy">MINT_ADDRESS_HERE</code>
+          <button onclick="copyCommunityMint()" style="font-size: 9px; padding: 1px 6px; cursor: pointer; background: #d3dce3; border: 1px solid #999; border-radius: 2px;">Copy</button>
+          <span id="headerCopyStatus" style="color: #8f8; font-size: 9px;"></span>
+          &nbsp;|&nbsp;
+          <a href="https://x.com/TWITTER_HANDLE_HERE" target="_blank" style="color: #d3dce3; font-weight: bold;">Follow on X</a>
         </td>
       </tr>
     </table>
@@ -89,7 +94,7 @@
       <div class="form_row">
         <label for="description">Discussion Post (What's your vision? Why should people care?)</label>
         <textarea id="description" name="description" rows="8" placeholder="This token is about big butts and is dedicated to butts of all shapes and sizes. It's something everyone can get behind." style="font-size: 12px;"></textarea>
-        <div style="font-size: 10px; color: #666; margin-top: 4px;">💡 Tip: This is your pitch to the community. Make it count!</div>
+        <div style="font-size: 10px; color: #666; margin-top: 4px;">Tip: Tell the people why they should buy your shitcoin, retard.</div>
       </div>
       <div class="form_row">
         <label for="twitter">Twitter (Optional)</label>
@@ -158,9 +163,28 @@
 <!-- ===== FOOTER ===== -->
 <div id="footer">
   Powered by PumpFun and God
+  <div style="margin-top: 6px; font-family: Verdana, sans-serif; font-size: 10px;">
+    <span style="font-weight: bold;">Community:</span>
+    <code id="footerMint" style="font-size: 9px; cursor: pointer;" onclick="copyCommunityMint()" title="Click to copy">MINT_ADDRESS_HERE</code>
+    <button onclick="copyCommunityMint()" style="font-size: 9px; padding: 1px 6px; cursor: pointer; background: #d3dce3; border: 1px solid #999; border-radius: 2px;">Copy</button>
+    <span id="footerCopyStatus" style="color: #080; font-size: 9px;"></span>
+    &nbsp;|&nbsp;
+    <a href="https://x.com/TWITTER_HANDLE_HERE" target="_blank" style="font-weight: bold;">Follow on X</a>
+  </div>
 </div>
 
 <script>
+  function copyCommunityMint() {
+    var mint = document.getElementById('headerMint').textContent;
+    navigator.clipboard.writeText(mint).then(function() {
+      var hs = document.getElementById('headerCopyStatus');
+      var fs = document.getElementById('footerCopyStatus');
+      if (hs) hs.textContent = 'Copied!';
+      if (fs) fs.textContent = 'Copied!';
+      setTimeout(function() { if (hs) hs.textContent = ''; if (fs) fs.textContent = ''; }, 2000);
+    });
+  }
+
   function updateDate() {
     var now = new Date();
     var options = { year: 'numeric', month: 'long', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
