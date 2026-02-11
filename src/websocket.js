@@ -7,6 +7,7 @@ const mintSubscribers = new Map(); // mint -> Set<ws>
 // Price history: mint -> array of {t, mc} points (ring buffer, max 500)
 const priceHistory = new Map();
 const MAX_HISTORY_POINTS = 500;
+const MAX_TRACKED_MINTS = 200; // Cap total tracked mints
 
 // OHLC candle aggregation
 const TIMEFRAMES = { '1m': 60000, '5m': 300000, '15m': 900000, '1h': 3600000 };
@@ -54,6 +55,15 @@ function getCurrentCandles(mint) {
   return result;
 }
 
+// Evict oldest mints when history Maps exceed max size
+function evictOldestMints() {
+  while (priceHistory.size > MAX_TRACKED_MINTS) {
+    const oldest = priceHistory.keys().next().value;
+    priceHistory.delete(oldest);
+    candleHistory.delete(oldest);
+  }
+}
+
 // Throttle: track last fetch time per mint
 const lastFetch = new Map(); // mint -> timestamp
 const THROTTLE_MS = 5000;
@@ -62,15 +72,20 @@ const THROTTLE_MS = 5000;
 let ppWs = null;
 let ppSubscribedMints = new Set();
 let reconnectTimer = null;
+let shuttingDown = false;
 
 // Reference to fetchPumpMarketData from server
 let fetchMarketData = null;
+
+// Store wss reference for shutdown
+let wssRef = null;
 
 export function initWebSockets(httpServer, fetchPumpMarketDataFn) {
   fetchMarketData = fetchPumpMarketDataFn;
 
   // Browser-facing WebSocket server (shares HTTP server)
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  wssRef = wss;
 
   wss.on('connection', (ws) => {
     clients.set(ws, new Set());
@@ -93,7 +108,11 @@ export function initWebSockets(httpServer, fetchPumpMarketDataFn) {
         const subs = mintSubscribers.get(mint);
         if (subs) {
           subs.delete(ws);
-          if (subs.size === 0) mintSubscribers.delete(mint);
+          if (subs.size === 0) {
+            mintSubscribers.delete(mint);
+            // Unsubscribe from PumpPortal if no one is watching
+            unsubscribePumpPortal(mint);
+          }
         }
       }
       clients.delete(ws);
@@ -130,6 +149,7 @@ function handleSubscribe(ws, mints) {
 }
 
 function connectPumpPortal() {
+  if (shuttingDown) return;
   if (ppWs && ppWs.readyState === WebSocket.OPEN) return;
 
   try {
@@ -171,7 +191,7 @@ function connectPumpPortal() {
 }
 
 function scheduleReconnect() {
-  if (reconnectTimer) return;
+  if (shuttingDown || reconnectTimer) return;
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
     connectPumpPortal();
@@ -188,6 +208,20 @@ function subscribePumpPortal(mint) {
     }));
     console.log(`[WS] Subscribed to PumpPortal trades for ${mint.slice(0, 8)}...`);
   }
+}
+
+function unsubscribePumpPortal(mint) {
+  ppSubscribedMints.delete(mint);
+
+  if (ppWs && ppWs.readyState === WebSocket.OPEN) {
+    ppWs.send(JSON.stringify({
+      method: 'unsubscribeTokenTrade',
+      keys: [mint]
+    }));
+  }
+
+  // Clean up history for mints no one watches
+  lastFetch.delete(mint);
 }
 
 async function onTradeEvent(mint) {
@@ -216,6 +250,7 @@ async function onTradeEvent(mint) {
       if (history.length > MAX_HISTORY_POINTS) history.shift();
 
       updateCandles(mint, mc, ts);
+      evictOldestMints();
     }
 
     const payload = JSON.stringify({
@@ -237,6 +272,25 @@ async function onTradeEvent(mint) {
   } catch (err) {
     console.error(`[WS] Error fetching data for ${mint}:`, err.message);
   }
+}
+
+export function shutdown() {
+  shuttingDown = true;
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  if (ppWs) {
+    ppWs.close();
+    ppWs = null;
+  }
+  if (wssRef) {
+    for (const ws of wssRef.clients) {
+      ws.close();
+    }
+    wssRef.close();
+  }
+  console.log('[WS] WebSocket connections closed');
 }
 
 export function getPriceHistory(mint) {

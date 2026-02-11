@@ -66,7 +66,16 @@ function showStatus(elementId, message, type = 'info') {
   const el = document.getElementById(elementId);
   if (!el) return;
 
-  el.innerHTML = `<div class="status-msg ${type}">${message}</div>`;
+  const div = document.createElement('div');
+  div.className = `status-msg ${type}`;
+  // If message contains HTML tags (intentional markup), use innerHTML; otherwise use textContent
+  if (message.includes('<a ') || message.includes('<strong>') || message.includes('<br')) {
+    div.innerHTML = message;
+  } else {
+    div.textContent = message;
+  }
+  el.innerHTML = '';
+  el.appendChild(div);
 }
 
 function clearStatus(elementId) {

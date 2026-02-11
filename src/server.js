@@ -3,13 +3,14 @@ import { createServer } from 'http';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import cors from 'cors';
-import { initWebSockets, getPriceHistory, getCandleHistory } from './websocket.js';
+import rateLimit from 'express-rate-limit';
+import { initWebSockets, getPriceHistory, getCandleHistory, shutdown as shutdownWs } from './websocket.js';
 import dotenv from 'dotenv';
 import { Connection, PublicKey, Keypair, VersionedTransaction, LAMPORTS_PER_SOL, SystemProgram, Transaction } from '@solana/web3.js';
 import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferInstruction, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import bs58 from 'bs58';
-import { initializeFirebase, createThreadForCoin, getComments, addComment, getThread, uploadImage, getAllThreads } from './firebase.js';
-import { storeCreatorKey, startFeeClaimTimer } from './fee-claimer.js';
+import { initializeFirebase, createThreadForCoin, getComments, addComment, getThread, uploadImage, getAllThreads, getDb } from './firebase.js';
+import { storeCreatorKey, startFeeClaimTimer, stopFeeClaimTimer } from './fee-claimer.js';
 
 dotenv.config();
 
@@ -33,9 +34,43 @@ console.log('🔧 MOCK_MODE:', MOCK_MODE);
 const app = express();
 
 // Middleware
-app.use(cors());
+const ALLOWED_ORIGINS = [
+  'https://shitcointalk.fun',
+  'https://www.shitcointalk.fun',
+  'http://localhost:3001',
+  'http://localhost:3000'
+];
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (same-origin, curl, mobile apps)
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(join(__dirname, 'public')));
+
+// Rate limiters
+const commentLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5, // 5 comments per minute per IP
+  message: { success: false, error: 'Too many comments, please wait a minute' }
+});
+
+const launchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 3, // 3 launch attempts per minute per IP
+  message: { success: false, error: 'Too many launch attempts, please wait' }
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60, // 60 API calls per minute per IP
+  message: { success: false, error: 'Rate limit exceeded' }
+});
 
 // Solana connection
 const connection = new Connection(RPC_URL, 'confirmed');
@@ -56,6 +91,14 @@ function cacheGet(key) {
 function cacheSet(key, data, ttlMs) {
   cache.set(key, { data, expires: Date.now() + ttlMs });
 }
+
+// Clean up expired cache entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of cache) {
+    if (now > entry.expires) cache.delete(key);
+  }
+}, 5 * 60 * 1000);
 
 // Convert IPFS URLs to HTTP gateway URLs
 function convertIpfsUrl(url) {
@@ -105,10 +148,20 @@ async function fetchPumpFunData(mint) {
   return null;
 }
 
+// Confirm transaction with timeout (prevents indefinite hangs)
+async function confirmWithTimeout(connection, signature, commitment, timeoutMs = 60000) {
+  return Promise.race([
+    connection.confirmTransaction(signature, commitment),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Transaction confirmation timed out')), timeoutMs)
+    )
+  ]);
+}
+
 // ===== LAUNCH ENDPOINTS =====
 
 // Step 1: Prepare token (upload to IPFS, generate keypairs)
-app.post('/api/launch/prepare', async (req, res) => {
+app.post('/api/launch/prepare', launchLimiter, async (req, res) => {
   try {
     const { wallet, name, symbol, description, image, creatorUsername, twitter, devBuy } = req.body;
     const devBuyAmount = parseFloat(devBuy) || 0;
@@ -258,6 +311,32 @@ app.post('/api/launch/prepare', async (req, res) => {
       devBuyAmount
     }, 600000); // 10 min expiry
 
+    // Backup pending launch to Firebase (survives server restart / cache expiry)
+    const db = getDb();
+    if (db) {
+      try {
+        await db.collection('pending_launches').doc(tokenMint).set({
+          mint: tokenMint,
+          name,
+          symbol,
+          description,
+          image: imageUrl,
+          creatorWallet: creatorKeypair.publicKey.toString(),
+          userWallet: wallet,
+          creatorUsername,
+          twitter: twitter || '',
+          creatorPrivateKey: bs58.encode(creatorKeypair.secretKey),
+          mintPrivateKey: bs58.encode(mintKeypair.secretKey),
+          metadataUri,
+          devBuyAmount,
+          createdAt: Date.now(),
+          status: 'pending'
+        });
+      } catch (err) {
+        console.error('Failed to backup pending launch:', err.message);
+      }
+    }
+
     const totalCost = MOCK_MODE ? 0 : (TOTAL_LAUNCH_COST + devBuyAmount);
 
     res.json({
@@ -365,7 +444,24 @@ app.post('/api/launch/confirm', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
 
-    const tokenData = cacheGet(`pending:${tokenMint}`);
+    let tokenData = cacheGet(`pending:${tokenMint}`);
+
+    // Fall back to Firebase if cache expired
+    if (!tokenData) {
+      const db = getDb();
+      if (db) {
+        try {
+          const doc = await db.collection('pending_launches').doc(tokenMint).get();
+          if (doc.exists && doc.data().status === 'pending') {
+            tokenData = doc.data();
+            console.log(`Recovered pending launch from Firebase: ${tokenMint}`);
+          }
+        } catch (err) {
+          console.error('Failed to recover pending launch:', err.message);
+        }
+      }
+    }
+
     if (!tokenData) {
       return res.status(404).json({ success: false, error: 'Token not found or expired' });
     }
@@ -382,8 +478,8 @@ app.post('/api/launch/confirm', async (req, res) => {
       console.log(`Waiting for payment confirmation: ${signature}`);
 
       try {
-        // Wait for transaction to be confirmed on-chain
-        const confirmation = await connection.confirmTransaction(signature, 'confirmed');
+        // Wait for transaction to be confirmed on-chain (60s timeout)
+        const confirmation = await confirmWithTimeout(connection, signature, 'confirmed');
         if (confirmation.value.err) {
           console.error('Transaction failed:', confirmation.value.err);
           return res.status(400).json({ success: false, error: 'Payment transaction failed' });
@@ -453,7 +549,7 @@ app.post('/api/launch/confirm', async (req, res) => {
 
     // Confirm transaction (skip in mock mode)
     if (!MOCK_MODE) {
-      const confirmation = await connection.confirmTransaction(createSignature, 'confirmed');
+      const confirmation = await confirmWithTimeout(connection, createSignature, 'confirmed');
       if (confirmation.value.err) {
         console.error('Transaction failed:', confirmation.value.err);
         return res.status(500).json({ success: false, error: 'Transaction failed on-chain' });
@@ -592,6 +688,12 @@ app.post('/api/launch/confirm', async (req, res) => {
     } catch (err) {
       console.error('Failed to store creator key:', err.message);
       // Non-fatal: launch still succeeds
+    }
+
+    // Clean up pending launch backup
+    const dbCleanup = getDb();
+    if (dbCleanup) {
+      dbCleanup.collection('pending_launches').doc(tokenMint).delete().catch(() => {});
     }
 
     res.json({
@@ -741,7 +843,7 @@ async function fetchPumpMarketData(mintAddress) {
 }
 
 // Get coin data from pump.fun APIs
-app.get('/api/coin/:mint', async (req, res) => {
+app.get('/api/coin/:mint', apiLimiter, async (req, res) => {
   try {
     const { mint } = req.params;
 
@@ -808,13 +910,21 @@ app.get('/api/thread/:mint/comments', async (req, res) => {
 });
 
 // Post a comment
-app.post('/api/thread/:mint/comment', async (req, res) => {
+app.post('/api/thread/:mint/comment', commentLimiter, async (req, res) => {
   try {
     const { mint } = req.params;
     const { username, text } = req.body;
 
     if (!username || !text) {
       return res.status(400).json({ success: false, error: 'Missing username or text' });
+    }
+
+    if (text.length > 2000) {
+      return res.status(400).json({ success: false, error: 'Comment too long (max 2000 characters)' });
+    }
+
+    if (username.length > 50) {
+      return res.status(400).json({ success: false, error: 'Username too long (max 50 characters)' });
     }
 
     const commentId = await addComment(mint, username, text);
@@ -895,3 +1005,22 @@ httpServer.listen(PORT, () => {
   `);
   startFeeClaimTimer(connection);
 });
+
+// Graceful shutdown
+function handleShutdown(signal) {
+  console.log(`\n${signal} received, shutting down gracefully...`);
+  stopFeeClaimTimer();
+  shutdownWs();
+  httpServer.close(() => {
+    console.log('HTTP server closed');
+    process.exit(0);
+  });
+  // Force exit after 10s if still hanging
+  setTimeout(() => {
+    console.error('Forced shutdown after timeout');
+    process.exit(1);
+  }, 10000);
+}
+
+process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+process.on('SIGINT', () => handleShutdown('SIGINT'));

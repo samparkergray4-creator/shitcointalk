@@ -92,6 +92,14 @@ export function startFeeClaimTimer(connection) {
   console.log('Fee claim timer started (every 30 minutes)');
 }
 
+export function stopFeeClaimTimer() {
+  if (claimTimer) {
+    clearInterval(claimTimer);
+    claimTimer = null;
+    console.log('Fee claim timer stopped');
+  }
+}
+
 async function claimAllFees(connection) {
   if (claimRunning) {
     console.log('Fee claim cycle already running, skipping');
