@@ -159,7 +159,7 @@ app.post('/api/launch/prepare', async (req, res) => {
         description: description || '',
         twitter: twitter || '',
         telegram: '',
-        website: '',
+        website: `https://shitcointalk.fun/thread/${tokenMint}`,
         showName: 'true'
       };
 
