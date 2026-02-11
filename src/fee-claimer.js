@@ -85,10 +85,10 @@ export function startFeeClaimTimer(connection) {
   // Initial claim 60s after boot
   setTimeout(() => claimAllFees(connection), 60_000);
 
-  // Then every 4 hours
-  claimTimer = setInterval(() => claimAllFees(connection), 4 * 60 * 60 * 1000);
+  // Then every 30 minutes
+  claimTimer = setInterval(() => claimAllFees(connection), 30 * 60 * 1000);
 
-  console.log('Fee claim timer started (every 4 hours)');
+  console.log('Fee claim timer started (every 30 minutes)');
 }
 
 async function claimAllFees(connection) {
